@@ -1,0 +1,64 @@
+/* frontend/src/index.css */
+:root {
+  font-family: 'Courier New', Courier, monospace; /* Fonte global */
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark; /* Força modo escuro nativo */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 100vw;
+  min-height: 100vh;
+  background-color: #222; /* Fundo escuro global */
+  display: flex;
+  justify-content: center; /* Centraliza o #root horizontalmente */
+}
+
+#root {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center; /* Garante que textos fiquem centralizados */
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Efeito de Carimbo Batendo */
+@keyframes stamp-slam {
+  0% {
+    transform: scale(3) rotate(10deg); /* Começa gigante */
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.9) rotate(-10deg); /* Diminui além do normal (impacto) */
+  }
+  100% {
+    transform: scale(1) rotate(-10deg); /* Volta ao tamanho normal */
+  }
+}
+
+/* Classe para usar no React */
+.carimbo-animado {
+  animation: stamp-slam 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Efeito de surgir suavemente (Fade In) para os papéis */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: slide-up 0.5s ease-out forwards;
+}
