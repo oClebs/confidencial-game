@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
-// 🔥 IMPORTAÇÃO SEGURA: A lista fica no servidor
+// IMPORTAÇÃO SEGURA
 const { PALAVRAS } = require('./palavras');
 
 const app = express();
@@ -16,6 +16,8 @@ const io = new Server(server, {
 });
 
 const salas = {};
+
+// --- FUNÇÕES UTILITÁRIAS ---
 
 function embaralhar(lista) {
   for (let i = lista.length - 1; i > 0; i--) {
@@ -38,26 +40,49 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
-// 🔥 TIMER CORRIGIDO: Usa tempo relativo (delta) para ignorar relógio errado do cliente
+// 🔥 NOVO: Gera Regex que ignora acentos e cedilha
+function gerarRegexFlexivel(texto) {
+    // Escapa caracteres especiais de regex primeiro
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Remove acentos da entrada para ter a base
+    const base = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const mapa = {
+        'a': '[aáàãâä]', 'e': '[eéèêë]', 'i': '[iíìîï]',
+        'o': '[oóòõôö]', 'u': '[uúùûü]', 'c': '[cç]', 'n': '[nñ]'
+    };
+
+    let pattern = "";
+    for (let char of base) {
+        pattern += mapa[char] || escapeRegex(char);
+    }
+    
+    // Adiciona suporte opcional a plural simples (s ou es) no final
+    pattern += "(es|s)?";
+
+    return new RegExp(pattern, 'gi');
+}
+
 function iniciarTimer(nomeSala, duracaoSegundos, callbackTimeout) {
   const sala = salas[nomeSala];
   if (!sala) return;
 
   if (sala.timer) clearTimeout(sala.timer);
   
-  // 1. O servidor define o timestamp absoluto DELE para controle interno
   sala.timestampFim = Date.now() + (duracaoSegundos * 1000);
 
-  // 2. Envia para todos apenas QUANTO TEMPO FALTA (Relativo)
   io.to(nomeSala).emit('sincronizar_tempo', { 
       segundosRestantes: duracaoSegundos 
   });
 
   sala.timer = setTimeout(() => {
-      sala.timestampFim = null; // Limpa quando acaba
+      sala.timestampFim = null; 
       callbackTimeout();
   }, duracaoSegundos * 1000);
 }
+
+// --- SOCKET IO ---
 
 io.on('connection', (socket) => {
   console.log(`👤 Conectado: ${socket.id}`);
@@ -97,7 +122,7 @@ io.on('connection', (socket) => {
       timer: null,
       destructionTimer: null,
       palavrasUsadas: new Set(),
-      timestampFim: null // Para controle do timer
+      timestampFim: null
     };
 
     socket.join(novoId);
@@ -194,7 +219,6 @@ io.on('connection', (socket) => {
     io.to(idMaiusculo).emit('atualizar_sala', sala.jogadores);
     io.to(idMaiusculo).emit('log_evento', { msg: `🟢 ${nomeJogador} conectou-se.`, tipo: 'info' });
 
-    // 🔥 SINCRONIZAÇÃO PARA QUEM ENTROU ATRASADO
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
         const totalR = sala.jogadores.length * sala.config.numCiclos;
         
@@ -205,7 +229,6 @@ io.on('connection', (socket) => {
         }
         
         if (sala.fase === 'SABOTAGEM' || sala.fase === 'DECIFRANDO') {
-            // Recalcula quem é quem para enviar ao novato
             const index = sala.indiceRodadaAtual;
             const cifrador = sala.jogadores[index % sala.jogadores.length];
             const decifrador = sala.jogadores[(index + 1) % sala.jogadores.length];
@@ -225,7 +248,7 @@ io.on('connection', (socket) => {
                 meuPapel: 'SABOTADOR',
                 palavraRevelada: sala.dadosRodada?.palavra,
                 descricao: null,
-                protagonistas: resumoPapeis // Envia nomes
+                protagonistas: resumoPapeis
             });
 
             if (sala.fase === 'DECIFRANDO') {
@@ -236,7 +259,6 @@ io.on('connection', (socket) => {
             }
         }
 
-        // 🔥 CORREÇÃO DE TIMER (Sincronia Fina)
         if (sala.timestampFim) {
             const agoraServidor = Date.now();
             const segundosQueFaltam = Math.ceil((sala.timestampFim - agoraServidor) / 1000);
@@ -340,12 +362,8 @@ io.on('connection', (socket) => {
     let textoBase = cifradorDaVez.meuTexto || "TEXTO PERDIDO"; 
     const palavraProibida = cifradorDaVez.minhaPalavra || "???"; 
     
-    // Auto-censura inicial (Singular/Plural simples)
-    let raizProibida = palavraProibida;
-    if (raizProibida.toUpperCase().endsWith('ES')) raizProibida = raizProibida.slice(0, -2);
-    else if (raizProibida.toUpperCase().endsWith('S')) raizProibida = raizProibida.slice(0, -1);
-    const regexAuto = new RegExp(`${raizProibida}(es|s)?`, 'gi');
-    
+    // Auto-censura inteligente na rodada inicial
+    const regexAuto = gerarRegexFlexivel(palavraProibida);
     if (regexAuto.test(textoBase)) { textoBase = textoBase.replace(regexAuto, '[CENSURADO]'); }
     
     sala.dadosRodada = { palavra: palavraProibida, descricao: textoBase }; 
@@ -356,7 +374,6 @@ io.on('connection', (socket) => {
     
     const totalR = sala.jogadores.length * sala.config.numCiclos;
 
-    // 🔥 DEFININDO PROTAGONISTAS PARA O FRONT
     const resumoPapeis = {
         cifrador: cifradorDaVez.nome,
         decifrador: decifradorDaVez.nome,
@@ -371,7 +388,7 @@ io.on('connection', (socket) => {
           rodadaAtual: index + 1, 
           totalRodadas: totalR, 
           meuPapel: jogador.papel,
-          protagonistas: resumoPapeis // <--- ENVIA NOMES
+          protagonistas: resumoPapeis
       };
 
       if (jogador.papel === 'CIFRADOR') { payload.descricao = sala.dadosRodada.descricao; payload.palavraRevelada = sala.dadosRodada.palavra; } 
@@ -389,7 +406,7 @@ io.on('connection', (socket) => {
     if (totalEnviados >= totalSabotadores) { if (sala.timer) clearTimeout(sala.timer); finalizeFaseSabotagem(nomeSala); }
   });
 
-  // 🔥 REGEX INTELIGENTE (PLURAL/SINGULAR)
+  // 🔥 AJUSTADO: Usa gerarRegexFlexivel e envia tempo junto
   function finalizeFaseSabotagem(nomeSala) {
     const sala = salas[nomeSala]; if (!sala) return;
     let textoCensurado = sala.dadosRodada.descricao; 
@@ -398,25 +415,21 @@ io.on('connection', (socket) => {
     const palavrasEfetivas = todasPalavras.filter(p => p && p.trim().length > 0);
 
     palavrasEfetivas.forEach(palavra => { 
-        const p = palavra.trim();
-        let raiz = p;
-        const upper = p.toUpperCase();
-        
-        if (upper.endsWith('ES')) raiz = p.slice(0, -2);
-        else if (upper.endsWith('S') && !upper.endsWith('SS')) raiz = p.slice(0, -1);
-        
-        const regex = new RegExp(`${raiz}(es|s)?`, 'gi'); 
+        const regex = gerarRegexFlexivel(palavra);
         textoCensurado = textoCensurado.replace(regex, '[CENSURADO]'); 
     });
 
-    sala.fase = 'DECIFRANDO'; sala.dadosRodada.textoCensurado = textoCensurado;
+    sala.fase = 'DECIFRANDO'; 
+    sala.dadosRodada.textoCensurado = textoCensurado;
     
+    // Inicia timer PRIMEIRO para definir timestamp
     iniciarTimer(nomeSala, sala.config.tempos.decifracao, () => { calcularPontuacaoEFinalizarRodada(nomeSala, null); });
     
-    // Envia palavras efetivas
+    // Envia tudo junto: texto E o tempo restante para forçar sync
     io.to(nomeSala).emit('fase_decifrar', { 
         textoCensurado: textoCensurado, 
-        palavrasEfetivas: palavrasEfetivas 
+        palavrasEfetivas: palavrasEfetivas,
+        segundosRestantes: sala.config.tempos.decifracao // 🔥 Correção do bug do timer 0
     });
   }
 
@@ -424,36 +437,43 @@ io.on('connection', (socket) => {
 
   function calcularPontuacaoEFinalizarRodada(nomeSala, tentativa) {
     const sala = salas[nomeSala]; if (!sala) return;
-    const palavraSecreta = sala.dadosRodada.palavra.toUpperCase(); const acertou = tentativa && tentativa.toUpperCase() === palavraSecreta;
-    let resumoPontos = []; const cifrador = sala.jogadores.find(j => j.papel === 'CIFRADOR'); const decifrador = sala.jogadores.find(j => j.papel === 'DECIFRADOR');
+    
+    // Normalização para comparar resposta
+    const palavraSecretaNorm = sala.dadosRodada.palavra.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const tentativaNorm = (tentativa || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    
+    const acertou = tentativaNorm === palavraSecretaNorm;
+    
+    let resumoPontos = []; 
+    const cifrador = sala.jogadores.find(j => j.papel === 'CIFRADOR'); 
+    const decifrador = sala.jogadores.find(j => j.papel === 'DECIFRADOR');
     
     if(decifrador) {
         if (acertou) { decifrador.pontos += 4; if(cifrador) cifrador.pontos += 4; resumoPontos.push(`${decifrador.nome} (Decifrador) acertou! +4 pts`); } 
-        else { resumoPontos.push(`${decifrador.nome} errou. (Era: ${palavraSecreta})`); }
+        else { resumoPontos.push(`${decifrador.nome} errou. (Era: ${sala.dadosRodada.palavra.toUpperCase()})`); }
     }
 
-    const textoOriginal = sala.dadosRodada.descricao.toLowerCase(); const mapaSabotagem = {}; 
+    const textoOriginal = sala.dadosRodada.descricao; 
+    const mapaSabotagem = {}; 
     
     for (const [idSabotador, palavras] of Object.entries(sala.sabotagens)) { 
         palavras.forEach(p => { 
             const palavraLimpa = p.trim();
             if (!palavraLimpa) return;
 
-            let raiz = palavraLimpa.toUpperCase();
-            if (raiz.endsWith('ES')) raiz = raiz.slice(0, -2);
-            else if (raiz.endsWith('S') && !raiz.endsWith('SS')) raiz = raiz.slice(0, -1);
-            const regex = new RegExp(`${raiz}(es|s)?`, 'i');
+            // Regex flexível para pontuar também
+            const regex = gerarRegexFlexivel(palavraLimpa);
 
             if (regex.test(textoOriginal)) { 
-                const chave = raiz.toLowerCase(); 
+                const chave = palavraLimpa.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
                 if (!mapaSabotagem[chave]) mapaSabotagem[chave] = []; 
                 mapaSabotagem[chave].push(idSabotador); 
             } 
         }); 
     }
 
-    for (const [palavra, sabotadoresIds] of Object.entries(mapaSabotagem)) { const ehUnica = sabotadoresIds.length === 1; const pontosGanhos = ehUnica ? 2 : 1; sabotadoresIds.forEach(id => { const sabotador = sala.jogadores.find(j => j.id === id); if (sabotador) sabotador.pontos += pontosGanhos; }); resumoPontos.push(`Palavra "${palavra}" sabotada! (${pontosGanhos} pts p/ sabotadores)`); }
-    io.to(nomeSala).emit('resultado_rodada', { acertou, palavraSecreta, tentativa: tentativa || "Tempo esgotado", resumo: resumoPontos, ranking: sala.jogadores.sort((a, b) => b.pontos - a.pontos) });
+    for (const [palavra, sabotadoresIds] of Object.entries(mapaSabotagem)) { const ehUnica = sabotadoresIds.length === 1; const pontosGanhos = ehUnica ? 2 : 1; sabotadoresIds.forEach(id => { const sabotador = sala.jogadores.find(j => j.id === id); if (sabotador) sabotador.pontos += pontosGanhos; }); resumoPontos.push(`Palavra "${palavra}" (ou variação) sabotada! (${pontosGanhos} pts p/ sabotadores)`); }
+    io.to(nomeSala).emit('resultado_rodada', { acertou, palavraSecreta: sala.dadosRodada.palavra.toUpperCase(), tentativa: tentativa || "Tempo esgotado", resumo: resumoPontos, ranking: sala.jogadores.sort((a, b) => b.pontos - a.pontos) });
   }
 
   socket.on('disconnect', () => {
@@ -462,7 +482,6 @@ io.on('connection', (socket) => {
       const jogadorIndex = sala.jogadores.findIndex(p => p.id === socket.id);
       if (jogadorIndex !== -1) {
         const jogador = sala.jogadores[jogadorIndex];
-        
         io.to(roomId).emit('log_evento', { msg: `🔴 ${jogador.nome} perdeu sinal.`, tipo: 'saida' });
 
         if (jogador.isHost) {

@@ -72,11 +72,14 @@ function App() {
   const [sessaoSalva, setSessaoSalva] = useState(null);
   const [exibirRegras, setExibirRegras] = useState(false);
   
-  // 🔥 NOVO: Estado para guardar os nomes dos papéis da rodada
+  // Nomes dos papéis da rodada
   const [protagonistas, setProtagonistas] = useState(null);
 
-  // 🔥 NOVO: Estado para controle de tempo relativo (anti-lag)
+  // Controle de tempo relativo (anti-lag)
   const [alvoLocal, setAlvoLocal] = useState(0);
+
+  // MODO STREAMER LOCAL (PARA CONVIDADOS)
+  const [modoStreamerLocal, setModoStreamerLocal] = useState(false);
 
   // CONFIGURAÇÕES
   const [configSala, setConfigSala] = useState({
@@ -135,56 +138,28 @@ function App() {
       setEntrou(true); setErroLogin(""); 
     });
 
-    socket.on('sessao_invalida', () => {
-        localStorage.removeItem('censorizador_session');
-        setSessaoSalva(null); 
-    });
-
-    socket.on('banido_da_sala', (msg) => {
-        localStorage.removeItem('censorizador_session');
-        alert("⛔ " + msg);
-        window.location.reload();
-    });
-
+    socket.on('sessao_invalida', () => { localStorage.removeItem('censorizador_session'); setSessaoSalva(null); });
+    socket.on('banido_da_sala', (msg) => { localStorage.removeItem('censorizador_session'); alert("⛔ " + msg); window.location.reload(); });
     socket.on('log_evento', (dados) => { adicionarLog(dados); });
     socket.on('erro_login', (msg) => { setErroLogin(msg); });
     socket.on('atualizar_sala', (lista) => { setJogadores(lista); const eu = lista.find(j => j.id === socket.id); if (eu) setSouHost(eu.isHost); });
-    
-    socket.on('sala_encerrada', (motivo) => { 
-        localStorage.removeItem('censorizador_session'); 
-        alert(motivo); 
-        window.location.reload(); 
-    });
-    
+    socket.on('sala_encerrada', (motivo) => { localStorage.removeItem('censorizador_session'); alert(motivo); window.location.reload(); });
     socket.on('aviso_sala', (dados) => { setAviso(dados); if (dados.tipo === 'sucesso') setTimeout(() => setAviso(null), 5000); });
     
     socket.on('inicio_preparacao', (dados) => { 
-        setFase('PREPARACAO'); 
-        setMinhaPalavraInicial(dados.palavra); 
-        setJaEnvieiPreparacao(false); 
-        setTextoPreparacao(""); 
-        setResultadoRodada(null); 
-        setJanelaExternaAberta(false); 
+        setFase('PREPARACAO'); setMinhaPalavraInicial(dados.palavra); setJaEnvieiPreparacao(false); 
+        setTextoPreparacao(""); setResultadoRodada(null); setJanelaExternaAberta(false); 
         setInputsSabotagem(Array(10).fill(""));
     });
     
     socket.on('status_preparacao', (dados) => { setStatusPreparacao(dados); });
     
     socket.on('nova_rodada', (dados) => { 
-        setFase('SABOTAGEM'); 
-        setMeuPapel(dados.meuPapel); 
-        setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
-        setInputsSabotagem(Array(10).fill(""));
-        setSabotagemEnviada(false); 
-        setTentativaDecifrador(""); 
-        setDescricaoRecebida(dados.descricao || ""); 
-        setResultadoRodada(null); 
-        setJanelaExternaAberta(false); 
+        setFase('SABOTAGEM'); setMeuPapel(dados.meuPapel); setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
+        setInputsSabotagem(Array(10).fill("")); setSabotagemEnviada(false); setTentativaDecifrador(""); 
+        setDescricaoRecebida(dados.descricao || ""); setResultadoRodada(null); setJanelaExternaAberta(false); 
         setPalavrasSabotadasRodada([]); 
-        
-        // 🔥 Salva os papéis recebidos do servidor
         if(dados.protagonistas) setProtagonistas(dados.protagonistas);
-
         if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); 
     });
     
@@ -192,32 +167,26 @@ function App() {
         setFase('DECIFRANDO'); 
         setTextoCensurado(dados.textoCensurado); 
         setPalavrasSabotadasRodada(dados.palavrasEfetivas || []); 
+        if (dados.segundosRestantes) {
+            const agora = Date.now();
+            setAlvoLocal(agora + (dados.segundosRestantes * 1000));
+        }
     });
 
-    // 🔥 TIMER RELATIVO: Recebe quanto falta e calcula alvo local
     socket.on('sincronizar_tempo', ({ segundosRestantes }) => { 
         const agora = Date.now();
         setAlvoLocal(agora + (segundosRestantes * 1000));
     });
     
     socket.on('resultado_rodada', (dados) => { 
-        setFase('RESULTADO'); 
-        setResultadoRodada(dados); 
-        setJogadores(dados.ranking); 
-        setAlvoLocal(0); // Para o timer
-
-        if (dados.acertou) {
-            audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e));
-        } else {
-            audioError.current?.play().catch(e => console.log("Áudio bloqueado", e));
-        }
+        setFase('RESULTADO'); setResultadoRodada(dados); setJogadores(dados.ranking); setAlvoLocal(0);
+        if (dados.acertou) { audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e)); } 
+        else { audioError.current?.play().catch(e => console.log("Áudio bloqueado", e)); }
     });
     
     socket.on('fim_de_jogo', () => { setFase('FIM'); });
 
-    const handleClickFora = () => {
-        if(menuBan.visivel) setMenuBan({...menuBan, visivel: false});
-    };
+    const handleClickFora = () => { if(menuBan.visivel) setMenuBan({...menuBan, visivel: false}); };
     window.addEventListener('click', handleClickFora);
 
     return () => { 
@@ -229,81 +198,36 @@ function App() {
     };
   }, [nome, senha, menuBan]);
 
-  // 🔥 LOOP DE TEMPO CORRIGIDO (Calcula delta constante)
   useEffect(() => {
       if (alvoLocal === 0) return;
-
       const interval = setInterval(() => {
           const agora = Date.now();
           const delta = Math.ceil((alvoLocal - agora) / 1000);
           setTempoRestante(delta > 0 ? delta : 0);
-          
           if (delta <= 0) setAlvoLocal(0);
       }, 200);
-
       return () => clearInterval(interval);
   }, [alvoLocal]);
 
-  // AUTO-ENVIO
   useEffect(() => {
       if (fase === 'PREPARACAO' && tempoRestante === 1 && !jaEnvieiPreparacao) {
-          console.log("⏰ Auto-envio ativado!");
-          if (textoPreparacao.length > 0) {
-              enviarTextoPreparacao();
-          } else {
-              socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); 
-              setJaEnvieiPreparacao(true);
-              setJanelaExternaAberta(false);
-          }
+          if (textoPreparacao.length > 0) { enviarTextoPreparacao(); } 
+          else { socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); }
       }
   }, [tempoRestante, fase, jaEnvieiPreparacao, textoPreparacao]);
 
   const acaoReconectar = () => { if (sessaoSalva) { setNome(sessaoSalva.nome); setSala(sessaoSalva.roomId); setSenha(sessaoSalva.senha); socket.emit('entrar_sala', { nomeJogador: sessaoSalva.nome, roomId: sessaoSalva.roomId, senha: sessaoSalva.senha, token: sessaoSalva.token }); } };
-  
-  const acaoCriarSala = () => { 
-      const senhaValida = configSala.twitchAuth ? true : (senha && senha.length > 0);
-      if (nome && senhaValida) { 
-          socket.emit('criar_sala', { nomeJogador: nome, senha: senha, config: configSala }); 
-      } else { setErroLogin("Preencha nome e senha!"); } 
-  };
-  
-  const acaoEntrarSala = () => { 
-      if (nome && sala && senha) { 
-          const token = sessaoSalva?.token; 
-          socket.emit('entrar_sala', { nomeJogador: nome, roomId: sala, senha: senha, token }); 
-      } else { setErroLogin("Preencha todos os campos!"); } 
-  };
-
+  const acaoCriarSala = () => { const senhaValida = configSala.twitchAuth ? true : (senha && senha.length > 0); if (nome && senhaValida) { socket.emit('criar_sala', { nomeJogador: nome, senha: senha, config: configSala }); } else { setErroLogin("Preencha nome e senha!"); } };
+  const acaoEntrarSala = () => { if (nome && sala && senha) { const token = sessaoSalva?.token; socket.emit('entrar_sala', { nomeJogador: nome, roomId: sala, senha: senha, token }); } else { setErroLogin("Preencha todos os campos!"); } };
   const iniciarJogo = () => { socket.emit('iniciar_jogo', sala); };
   const proximaRodada = () => { socket.emit('proxima_rodada', sala); };
-  const enviarTextoPreparacao = () => { 
-      socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); 
-      setJaEnvieiPreparacao(true); 
-      setJanelaExternaAberta(false); 
-  };
+  const enviarTextoPreparacao = () => { socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); };
   const enviarSabotagem = () => { const palavrasValidas = inputsSabotagem.filter(p => p.trim() !== ""); socket.emit('sabotador_envia', { nomeSala: sala, previsoes: palavrasValidas }); setSabotagemEnviada(true); };
   const atualizarInputSabotagem = (index, valor) => { const novosInputs = [...inputsSabotagem]; novosInputs[index] = valor; setInputsSabotagem(novosInputs); };
   const enviarDecifracao = () => { socket.emit('decifrador_chuta', { nomeSala: sala, tentativa: tentativaDecifrador }); };
-
-  const sairDaSala = () => {
-    if (confirm("Tem certeza que deseja abandonar a missão?")) {
-        localStorage.removeItem('censorizador_session');
-        socket.disconnect();
-        window.location.reload();
-    }
-  };
-
-  const handleContextMenuJogador = (e, jogador) => {
-      if(!souHost) return;
-      if(jogador.id === socket.id) return; 
-      e.preventDefault(); 
-      setMenuBan({ visivel: true, x: e.clientX, y: e.clientY, jogadorId: jogador.id, jogadorNome: jogador.nome });
-  };
-
-  const confirmarBan = () => {
-      if(menuBan.jogadorId) { socket.emit('banir_jogador', { roomId: sala, targetId: menuBan.jogadorId }); }
-      setMenuBan({ ...menuBan, visivel: false });
-  };
+  const sairDaSala = () => { if (confirm("Tem certeza que deseja abandonar a missão?")) { localStorage.removeItem('censorizador_session'); socket.disconnect(); window.location.reload(); } };
+  const handleContextMenuJogador = (e, jogador) => { if(!souHost) return; if(jogador.id === socket.id) return; e.preventDefault(); setMenuBan({ visivel: true, x: e.clientX, y: e.clientY, jogadorId: jogador.id, jogadorNome: jogador.nome }); };
+  const confirmarBan = () => { if(menuBan.jogadorId) { socket.emit('banir_jogador', { roomId: sala, targetId: menuBan.jogadorId }); } setMenuBan({ ...menuBan, visivel: false }); };
 
   // --- ESTILOS & COMPONENTES ---
   const mainWrapper = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width: '100%', fontFamily: "'Courier New', Courier, monospace", color: '#e5e5e5', boxSizing: 'border-box', padding: '20px' };
@@ -311,9 +235,12 @@ function App() {
   const btnStyle = { padding: '20px', background: '#333', color: 'white', border: 'none', marginTop: '10px', fontSize: '1.2rem', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', width: '100%', textTransform: 'uppercase' };
   const paperStyle = { backgroundColor: '#f4e4bc', backgroundImage: 'linear-gradient(#e8dcb5 1px, transparent 1px)', backgroundSize: '100% 1.5em', color: '#1a1a1a', padding: '40px', boxShadow: '5px 5px 15px rgba(0,0,0,0.5)', maxWidth: '800px', width: '100%', margin: '30px auto', border: '1px solid #cfb997', fontSize: '22px', lineHeight: '1.5em', textAlign: 'left', position: 'relative', transform: 'rotate(-1deg)' };
   const agentCardStyle = { backgroundColor: '#fff', color: '#333', padding: '20px 15px', width: '180px', height: '240px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', fontFamily: "'Courier New', Courier, monospace", transition: 'transform 0.2s', border: '1px solid #ccc' };
-  const stickyNoteStyle = { backgroundColor: '#fef3c7', color: '#333', padding: '15px 30px', display: 'inline-block', transform: 'rotate(2deg)', boxShadow: '3px 3px 8px rgba(0,0,0,0.4)', marginTop: '20px', fontFamily: "'Courier New', Courier, monospace', textAlign: 'center'", border: '1px solid #eab308', textAlign: 'center' };
+  const stickyNoteStyle = { backgroundColor: '#fef3c7', color: '#333', padding: '15px 30px', display: 'inline-block', transform: 'rotate(2deg)', boxShadow: '3px 3px 8px rgba(0,0,0,0.4)', marginTop: '20px', fontFamily: "'Courier New', Courier, monospace'", textAlign: 'center', border: '1px solid #eab308' };
   const stampStyle = { border: '3px solid', padding: '5px 10px', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '14px', transform: 'rotate(-10deg)', opacity: 0.9, marginTop: 'auto', letterSpacing: '1px', textAlign: 'center', fontFamily: 'sans-serif' };
   const rulesBtnStyle = { position: 'fixed', bottom: '20px', right: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#d97706', color: '#fff', fontSize: '30px', fontWeight: 'bold', border: '3px solid #fff', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  
+  const streamerBtnStyle = { position: 'fixed', top: '20px', right: '20px', width: '50px', height: '50px', borderRadius: '50%', backgroundColor: modoStreamerLocal ? '#10b981' : '#333', color: '#fff', fontSize: '24px', border: '2px solid #fff', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
   const exitBtnStyle = { position: 'fixed', top: '20px', left: '20px', backgroundColor: 'transparent', color: '#ef4444', border: '2px solid #ef4444', padding: '10px 15px', fontWeight: 'bold', cursor: 'pointer', zIndex: 2000, fontFamily: 'monospace', textTransform: 'uppercase' };
   const rulesBoxStyle = { position: 'fixed', bottom: '90px', right: '20px', width: '300px', backgroundColor: '#f4e4bc', color: '#1c1917', padding: '20px', border: '4px solid #1c1917', borderRadius: '4px', boxShadow: '-5px 5px 15px rgba(0,0,0,0.7)', zIndex: 1999, fontFamily: "'Courier New', Courier, monospace", transform: exibirRegras ? 'scale(1)' : 'scale(0)', transformOrigin: 'bottom right', transition: 'transform 0.2s ease-out' };
   const menuBanStyle = { position: 'fixed', top: menuBan.y, left: menuBan.x, backgroundColor: '#1c1917', color: '#ef4444', border: '2px solid #ef4444', padding: '10px 20px', zIndex: 99999, cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', fontWeight: 'bold', fontSize: '14px' };
@@ -326,15 +253,8 @@ function App() {
     <>
       <button onClick={() => setExibirRegras(!exibirRegras)} style={rulesBtnStyle} title="Protocolos da Missão">?</button>
       <div style={rulesBoxStyle}>
-        <div style={{ borderBottom: '2px dashed #1c1917', paddingBottom: '10px', marginBottom: '10px' }}>
-            <h3 style={{ margin: 0, textTransform: 'uppercase' }}>📂 Protocolos</h3>
-        </div>
-        <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '14px', lineHeight: '1.4em' }}>
-            <li style={{ marginBottom: '8px' }}><strong>1. O SEGREDO:</strong> Cada um recebe uma palavra secreta.</li>
-            <li style={{ marginBottom: '8px' }}><strong>2. 🕵️ CIFRADOR:</strong> Escreve um texto para descrever sua palavra (sem usar a palavra!).</li>
-            <li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras do texto para atrapalhar.</li>
-            <li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar qual era a palavra original.</li>
-        </ul>
+        <div style={{ borderBottom: '2px dashed #1c1917', paddingBottom: '10px', marginBottom: '10px' }}><h3 style={{ margin: 0, textTransform: 'uppercase' }}>📂 Protocolos</h3></div>
+        <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '14px', lineHeight: '1.4em' }}><li style={{ marginBottom: '8px' }}><strong>1. O SEGREDO:</strong> Cada um recebe uma palavra secreta.</li><li style={{ marginBottom: '8px' }}><strong>2. 🕵️ CIFRADOR:</strong> Escreve um texto para descrever sua palavra (sem usar a palavra!).</li><li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras do texto para atrapalhar.</li><li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar qual era a palavra original.</li></ul>
         <div style={{ marginTop: '10px', fontSize: '12px', fontStyle: 'italic', textAlign: 'center', color: '#b91c1c' }}>"Confie em ninguém."</div>
       </div>
     </>
@@ -343,11 +263,7 @@ function App() {
   const SidebarJogadores = () => (
       <div style={{ position: 'fixed', top: '50%', left: '20px', transform: 'translateY(-50%)', width: '80px', background: '#1c1917', border: '2px solid #333', padding: '10px 5px', borderRadius: '10px', zIndex: 500, boxShadow: '0 0 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
           <div style={{ fontSize: '10px', color: '#666', fontWeight: 'bold', textAlign: 'center', borderBottom: '1px solid #333', width: '100%', paddingBottom: '5px' }}>AGENTS</div>
-          {jogadores.map(j => (
-              <div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : j.nome} style={{ width: '50px', height: '50px', background: j.id === socket.id ? '#d97706' : '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: j.isHost ? '3px solid #b91c1c' : '2px solid #333', fontSize: '24px', cursor: souHost ? 'context-menu' : 'default', position: 'relative' }}>
-                  🕵️‍♂️ <span style={{ position: 'absolute', bottom: '-15px', fontSize: '10px', color: '#fff', background: '#000', padding: '0 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{j.nome.substring(0,6)}</span>
-              </div>
-          ))}
+          {jogadores.map(j => (<div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : j.nome} style={{ width: '50px', height: '50px', background: j.id === socket.id ? '#d97706' : '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: j.isHost ? '3px solid #b91c1c' : '2px solid #333', fontSize: '24px', cursor: souHost ? 'context-menu' : 'default', position: 'relative' }}>🕵️‍♂️ <span style={{ position: 'absolute', bottom: '-15px', fontSize: '10px', color: '#fff', background: '#000', padding: '0 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{j.nome.substring(0,6)}</span></div>))}
       </div>
   );
 
@@ -358,7 +274,6 @@ function App() {
       </div>
   );
 
-  // 🔥 NOVO COMPONENTE: HUD DE PAPÉIS
   const RoleDisplay = () => {
     if (!protagonistas) return null;
     return (
@@ -376,6 +291,7 @@ function App() {
         <AvisoToast />
         <SystemLogs />
         {entrou && (<button onClick={sairDaSala} style={exitBtnStyle}>ABANDONAR</button>)}
+        {entrou && (<button onClick={() => setModoStreamerLocal(!modoStreamerLocal)} style={streamerBtnStyle} title="Modo Streamer (Ocultar Segredos)">{modoStreamerLocal ? '🙈' : '👁️'}</button>)}
         {menuBan.visivel && (<div style={menuBanStyle} onClick={confirmarBan}>🔨 BANIR AGENTE <br/> <span style={{color: 'white'}}>{menuBan.jogadorNome}</span></div>)}
         {entrou && fase !== 'LOBBY' && fase !== 'FIM' && <SidebarJogadores />}
         {content}
@@ -395,15 +311,11 @@ function App() {
               <h3 style={{textAlign: 'center'}}>// CONFIGURAÇÃO DA MISSÃO //</h3>
               <input placeholder="CODINOME (Seu Nome)" onChange={e => setNome(e.target.value)} style={inputStyle} />
               <input placeholder={configSala.twitchAuth ? "🔒 AUTENTICAÇÃO TWITCH ATIVA" : "DEFINIR SENHA DE ACESSO"} type="text" disabled={configSala.twitchAuth} onChange={e => setSenha(e.target.value)} value={configSala.twitchAuth ? "" : senha} style={{ ...inputStyle, opacity: configSala.twitchAuth ? 0.6 : 1, cursor: configSala.twitchAuth ? 'not-allowed' : 'text' }} />
-              
               <div style={{ background: '#e8dcb5', padding: '15px', border: '2px solid #333', margin: '10px 0', textAlign: 'left' }}>
                   <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #333' }}>⚙️ AJUSTES DO SISTEMA</h4>
                   <label style={{ display: 'flex', alignItems: 'center', margin: '5px 0', cursor: 'pointer', color: '#000', fontWeight: 'bold' }}><input type="checkbox" checked={configSala.twitchAuth} onChange={e => setConfigSala({...configSala, twitchAuth: e.target.checked})} style={{ marginRight: '10px' }} />Exigir Autenticação Twitch (Substitui Senha)</label>
                   <label style={{ display: 'flex', alignItems: 'center', margin: '5px 0', cursor: 'pointer', color: '#000', fontWeight: 'bold' }}><input type="checkbox" checked={configSala.streamerMode} onChange={e => setConfigSala({...configSala, streamerMode: e.target.checked})} style={{ marginRight: '10px' }} />Modo Streamer (Janela Segura)</label>
-                  <div style={{ margin: '10px 0' }}>
-                      <label style={{ fontSize: '14px', fontWeight: 'bold' }}>CICLOS DE RODADAS (Voltas na mesa):</label>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}><input type="range" min="1" max="5" value={configSala.numCiclos} onChange={e => setConfigSala({...configSala, numCiclos: parseInt(e.target.value)})} style={{ flex: 1, cursor: 'pointer' }} /><span style={{ fontWeight: 'bold', fontSize: '18px', width: '30px' }}>{configSala.numCiclos}</span></div>
-                  </div>
+                  <div style={{ margin: '10px 0' }}><label style={{ fontSize: '14px', fontWeight: 'bold' }}>CICLOS DE RODADAS (Voltas na mesa):</label><div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}><input type="range" min="1" max="5" value={configSala.numCiclos} onChange={e => setConfigSala({...configSala, numCiclos: parseInt(e.target.value)})} style={{ flex: 1, cursor: 'pointer' }} /><span style={{ fontWeight: 'bold', fontSize: '18px', width: '30px' }}>{configSala.numCiclos}</span></div></div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
                       <div><label style={{ fontSize: '12px', fontWeight: 'bold' }}>PREPARAÇÃO (s):</label><input type="number" value={configSala.tempos.preparacao} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, preparacao: e.target.value}})} style={{ ...inputStyle, padding: '5px' }} /></div>
                       <div><label style={{ fontSize: '12px', fontWeight: 'bold' }}>SABOTAGEM (s):</label><input type="number" value={configSala.tempos.sabotagem} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, sabotagem: e.target.value}})} style={{ ...inputStyle, padding: '5px' }} /></div>
@@ -439,7 +351,7 @@ function App() {
   }
 
   if (fase === 'PREPARACAO') {
-      const devoEsconder = souHost && configRecebida?.streamerMode;
+      const devoEsconder = (souHost && configRecebida?.streamerMode) || modoStreamerLocal;
       return commonRender(
         <div style={mainWrapper}>
             <TimerDisplay/>
@@ -486,7 +398,16 @@ function App() {
               <div style={{ position: 'absolute', bottom: '20px', right: '20px', border: '4px solid black', color: 'black', padding: '5px 15px', transform: 'rotate(-10deg)', fontSize: '24px', fontWeight: 'bold', opacity: 0.4, pointerEvents: 'none' }}>CLASSIFIED</div>
               {textoCensurado.split(/(\[CENSURADO\])/g).map((parte, i) => (parte === '[CENSURADO]' ? <span key={i} style={{backgroundColor: '#111', color: 'transparent', padding: '2px 5px', margin: '0 2px'}}>████</span> : <span key={i}>{parte}</span>))}
           </div>
-          {meuPapel === 'SABOTADOR' && (<div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '30px', padding: '20px', borderTop: '2px dashed #666', width: '100%', maxWidth: '800px' }}><p style={{ width: '100%', color: '#999', textAlign: 'center', margin: '0 0 10px 0', fontSize: '12px' }}>TENTATIVAS DE SABOTAGEM DA EQUIPE:</p>{palavrasSabotadasRodada.map((p, i) => (<div key={i} style={{ backgroundColor: '#fef08a', color: '#000', padding: '5px 15px', fontFamily: 'cursive', transform: `rotate(${Math.random() * 10 - 5}deg)`, boxShadow: '2px 2px 5px rgba(0,0,0,0.3)', fontSize: '14px', fontWeight: 'bold' }}>{(souHost && configRecebida?.streamerMode) ? '█████' : p}</div>))}</div>)}
+          {meuPapel === 'SABOTADOR' && (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '30px', padding: '20px', borderTop: '2px dashed #666', width: '100%', maxWidth: '800px' }}>
+                  <p style={{ width: '100%', color: '#999', textAlign: 'center', margin: '0 0 10px 0', fontSize: '12px' }}>TENTATIVAS DE SABOTAGEM DA EQUIPE:</p>
+                  {palavrasSabotadasRodada.map((p, i) => (
+                      <div key={i} style={{ backgroundColor: '#fef08a', color: '#000', padding: '5px 15px', fontFamily: "'Courier New', Courier, monospace", transform: `rotate(${Math.random() * 10 - 5}deg)`, boxShadow: '2px 2px 5px rgba(0,0,0,0.3)', fontSize: '14px', fontWeight: 'bold' }}>
+                          {((souHost && configRecebida?.streamerMode) || modoStreamerLocal) ? '█████' : p}
+                      </div>
+                  ))}
+              </div>
+          )}
           {meuPapel === 'DECIFRADOR' ? (<div style={{ maxWidth: '600px', width: '100%', margin: '0 auto', padding: '20px' }}><h3 style={{ color: 'white', textAlign: 'center' }}>QUAL É A PALAVRA-CHAVE?</h3><input style={inputStyle} placeholder="DIGITE SUA RESPOSTA..." value={tentativaDecifrador} onChange={(e) => setTentativaDecifrador(e.target.value)}/><button onClick={enviarDecifracao} style={{ width: '100%', marginTop: '20px', padding: '20px', background: '#2563eb', color: 'white', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 5px 0 #1e3a8a' }}>ENVIAR DECODIFICAÇÃO</button></div>) : (<div style={{ textAlign: 'center', color: 'white' }}><h3>// AGUARDANDO ANÁLISE DO DECIFRADOR //</h3></div>)}
       </div>
   );
