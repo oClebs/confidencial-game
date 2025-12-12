@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import io from 'socket.io-client';
+// 🔥 CORREÇÃO: Importando o arquivo com o nome correto "logo.png"
+import logoImage from './assets/logo.png'; 
 
 // URL DINÂMICA PARA DEPLOY
 const socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
@@ -61,7 +63,6 @@ function App() {
   const [descricaoRecebida, setDescricaoRecebida] = useState("");
   const [textoCensurado, setTextoCensurado] = useState("");
   
-  // 🔥 ATUALIZADO: ARRAY DE 10 INPUTS PARA SABOTAGEM
   const [inputsSabotagem, setInputsSabotagem] = useState(Array(10).fill(""));
   
   const [sabotagemEnviada, setSabotagemEnviada] = useState(false);
@@ -162,7 +163,6 @@ function App() {
     
     socket.on('aviso_sala', (dados) => { setAviso(dados); if (dados.tipo === 'sucesso') setTimeout(() => setAviso(null), 5000); });
     
-    // 🔥 ATUALIZADO: RESET PARA 10 CAMPOS VAZIOS AO INICIAR PREPARAÇÃO
     socket.on('inicio_preparacao', (dados) => { 
         setFase('PREPARACAO'); 
         setMinhaPalavraInicial(dados.palavra); 
@@ -170,17 +170,16 @@ function App() {
         setTextoPreparacao(""); 
         setResultadoRodada(null); 
         setJanelaExternaAberta(false); 
-        setInputsSabotagem(Array(10).fill("")); // <--- AQUI
+        setInputsSabotagem(Array(10).fill(""));
     });
     
     socket.on('status_preparacao', (dados) => { setStatusPreparacao(dados); });
     
-    // 🔥 ATUALIZADO: RESET PARA 10 CAMPOS VAZIOS NA NOVA RODADA
     socket.on('nova_rodada', (dados) => { 
         setFase('SABOTAGEM'); 
         setMeuPapel(dados.meuPapel); 
         setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
-        setInputsSabotagem(Array(10).fill("")); // <--- E AQUI TAMBÉM
+        setInputsSabotagem(Array(10).fill(""));
         setSabotagemEnviada(false); 
         setTentativaDecifrador(""); 
         setDescricaoRecebida(dados.descricao || ""); 
@@ -350,19 +349,6 @@ function App() {
   
   const backdropStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9998 };
 
-  const LogoText = () => (
-    <div style={{ textAlign: 'center', marginBottom: '20px', width: '100%' }}>
-      <h1 style={{ 
-        fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', margin: '0 auto', color: '#b91c1c', 
-        textTransform: 'uppercase', letterSpacing: '3px', border: '4px solid #b91c1c', 
-        display: 'inline-block', padding: '5px 15px', transform: 'rotate(-2deg)', 
-        boxShadow: '3px 3px 0 rgba(0,0,0,0.3)', backgroundColor: '#f4e4bc' 
-      }}>
-        CONFIDENCIAL
-      </h1>
-    </div>
-  );
-
   const TimerDisplay = () => (<div style={{ position: 'fixed', top: 20, right: 20, background: tempoRestante < 10 ? '#b91c1c' : '#333', color: 'white', padding: '10px 20px', borderRadius: '50px', fontSize: '24px', fontWeight: 'bold', zIndex: 1000, boxShadow: '0 4px 10px rgba(0,0,0,0.3)', border: '2px solid white' }}>⏱️ {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}</div>);
   const HeaderDebug = () => ( fase !== 'LOBBY' && fase !== 'PREPARACAO' && fase !== 'FIM' && <div style={{ width: '100%', background: '#1c1917', color: '#f4e4bc', padding: '10px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #d97706', borderTop: '2px solid #d97706', boxSizing: 'border-box' }}><span>ARQUIVO: <strong>{meuPapel}</strong></span><span>RODADA: {infoRodada.atual}/{infoRodada.total}</span></div> );
   const AvisoToast = () => { if (!aviso) return null; const bg = aviso.tipo === 'perigo' ? '#b91c1c' : '#15803d'; return (<div style={{ position: 'fixed', top: 0, left: 0, width: '100%', background: bg, color: 'white', padding: '15px', textAlign: 'center', zIndex: 9999, fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', animation: aviso.tipo === 'perigo' ? 'pulse 1s infinite' : 'none' }}>{aviso.msg}</div>); };
@@ -450,7 +436,6 @@ function App() {
                 ABANDONAR
             </button>
         )}
-        
         {menuBan.visivel && (
             <div style={menuBanStyle} onClick={confirmarBan}>
                 🔨 BANIR AGENTE <br/> <span style={{color: 'white'}}>{menuBan.jogadorNome}</span>
@@ -464,8 +449,10 @@ function App() {
   if (!entrou) {
     return (
       <div style={mainWrapper}>
-        <div style={{ border: '4px solid #333', padding: '40px', paddingTop: '80px', background: '#f4e4bc', color: '#333', width: '100%', maxWidth: '500px', boxSizing: 'border-box', boxShadow: '10px 10px 0 rgba(0,0,0,0.5)', position: 'relative' }}>
-          <LogoText />
+        {/* 🔥 SUBSTITUIÇÃO DA LOGO AQUI */}
+        <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '500px', border: '4px solid #333', boxSizing: 'border-box', boxShadow: '10px 10px 0 rgba(0,0,0,0.5)', marginBottom: '20px' }} />
+        
+        <div style={{ border: '4px solid #333', padding: '40px', background: '#f4e4bc', color: '#333', width: '100%', maxWidth: '500px', boxSizing: 'border-box', boxShadow: '10px 10px 0 rgba(0,0,0,0.5)', position: 'relative' }}>
           {sessaoSalva && modoLogin === 'MENU' && (<div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px dashed #333' }}><p style={{ fontWeight: 'bold', margin: '0 0 10px 0', textAlign: 'center' }}>// SESSÃO ANTERIOR DETECTADA //</p><button onClick={acaoReconectar} style={{ ...btnStyle, background: '#d97706', border: '2px dashed #000', color: 'black' }}>VOLTAR PARA {sessaoSalva.roomId}</button></div>)}
           {modoLogin === 'MENU' && (<div style={{ marginTop: '20px' }}><button onClick={() => setModoLogin('CRIAR')} style={btnStyle}>INICIAR NOVA OPERAÇÃO</button><button onClick={() => setModoLogin('ENTRAR')} style={{...btnStyle, background: '#57534e'}}>ACESSAR OPERAÇÃO EXISTENTE</button></div>)}
           
@@ -496,7 +483,6 @@ function App() {
                       Modo Streamer (Janela Segura)
                   </label>
 
-                  {/* 🔥 INPUT CICLOS */}
                   <div style={{ margin: '10px 0' }}>
                       <label style={{ fontSize: '14px', fontWeight: 'bold' }}>CICLOS DE RODADAS (Voltas na mesa):</label>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
@@ -538,7 +524,9 @@ function App() {
       <div style={mainWrapper}>
         <RulesWidget />
         <div style={{ borderBottom: '4px solid #d97706', paddingBottom: '20px', marginBottom: '30px', textAlign: 'center', width: '100%' }}>
-          <LogoText />
+          {/* 🔥 SUBSTITUIÇÃO DA LOGO NO LOBBY TAMBÉM */}
+          <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '400px', border: '3px solid #d97706', boxSizing: 'border-box', boxShadow: '5px 5px 0 rgba(0,0,0,0.3)', marginBottom: '20px' }} />
+          
           <p style={{ letterSpacing: '3px', marginTop: '10px', fontSize: '1rem', color: '#d97706', fontWeight: 'bold' }}>// AGENTES ATIVOS NA REDE //</p>
           <div style={stickyNoteStyle}><span style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>CÓDIGO DA MISSÃO:</span><strong style={{ fontSize: '2.5rem', letterSpacing: '3px' }}>{sala}</strong></div>
           
