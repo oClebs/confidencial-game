@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import io from 'socket.io-client';
-// 🔥 CORREÇÃO: Importando o arquivo com o nome correto "logo.png"
 import logoImage from './assets/logo.png'; 
 
 // URL DINÂMICA PARA DEPLOY
@@ -227,6 +226,22 @@ function App() {
 
   useEffect(() => { if (tempoRestante <= 0) return; const interval = setInterval(() => { setTempoRestante(prev => Math.max(0, prev - 1)); }, 1000); return () => clearInterval(interval); }, [tempoRestante]);
 
+  // 🔥 NOVO: AUTO-ENVIO QUANDO O TEMPO ACABAR (Fase Preparação)
+  useEffect(() => {
+      if (fase === 'PREPARACAO' && tempoRestante === 1 && !jaEnvieiPreparacao) {
+          console.log("⏰ Tempo esgotando! Enviando texto automaticamente...");
+          // Envia o que tiver escrito, mesmo que incompleto
+          if (textoPreparacao.length > 0) {
+              enviarTextoPreparacao();
+          } else {
+              // Se tiver vazio, manda um texto padrão pra não travar
+              socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); 
+              setJaEnvieiPreparacao(true);
+              setJanelaExternaAberta(false);
+          }
+      }
+  }, [tempoRestante, fase, jaEnvieiPreparacao, textoPreparacao]); // Dependências cruciais
+
   const acaoReconectar = () => { if (sessaoSalva) { setNome(sessaoSalva.nome); setSala(sessaoSalva.roomId); setSenha(sessaoSalva.senha); socket.emit('entrar_sala', { nomeJogador: sessaoSalva.nome, roomId: sessaoSalva.roomId, senha: sessaoSalva.senha, token: sessaoSalva.token }); } };
   
   const acaoCriarSala = () => { 
@@ -249,12 +264,11 @@ function App() {
   const iniciarJogo = () => { socket.emit('iniciar_jogo', sala); };
   const proximaRodada = () => { socket.emit('proxima_rodada', sala); };
   const enviarTextoPreparacao = () => { 
-      if (textoPreparacao.trim().length > 0) { 
-          socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); 
-          setJaEnvieiPreparacao(true); 
-          setJanelaExternaAberta(false); 
-      } 
-    };
+      // Permite enviar qualquer coisa se for o auto-envio
+      socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); 
+      setJaEnvieiPreparacao(true); 
+      setJanelaExternaAberta(false); 
+  };
   const enviarSabotagem = () => { const palavrasValidas = inputsSabotagem.filter(p => p.trim() !== ""); socket.emit('sabotador_envia', { nomeSala: sala, previsoes: palavrasValidas }); setSabotagemEnviada(true); };
   const atualizarInputSabotagem = (index, valor) => { const novosInputs = [...inputsSabotagem]; novosInputs[index] = valor; setInputsSabotagem(novosInputs); };
   const enviarDecifracao = () => { socket.emit('decifrador_chuta', { nomeSala: sala, tentativa: tentativaDecifrador }); };
@@ -449,7 +463,6 @@ function App() {
   if (!entrou) {
     return (
       <div style={mainWrapper}>
-        {/* 🔥 SUBSTITUIÇÃO DA LOGO AQUI */}
         <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '500px', border: '4px solid #333', boxSizing: 'border-box', boxShadow: '10px 10px 0 rgba(0,0,0,0.5)', marginBottom: '20px' }} />
         
         <div style={{ border: '4px solid #333', padding: '40px', background: '#f4e4bc', color: '#333', width: '100%', maxWidth: '500px', boxSizing: 'border-box', boxShadow: '10px 10px 0 rgba(0,0,0,0.5)', position: 'relative' }}>
@@ -524,7 +537,6 @@ function App() {
       <div style={mainWrapper}>
         <RulesWidget />
         <div style={{ borderBottom: '4px solid #d97706', paddingBottom: '20px', marginBottom: '30px', textAlign: 'center', width: '100%' }}>
-          {/* 🔥 SUBSTITUIÇÃO DA LOGO NO LOBBY TAMBÉM */}
           <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '400px', border: '3px solid #d97706', boxSizing: 'border-box', boxShadow: '5px 5px 0 rgba(0,0,0,0.3)', marginBottom: '20px' }} />
           
           <p style={{ letterSpacing: '3px', marginTop: '10px', fontSize: '1rem', color: '#d97706', fontWeight: 'bold' }}>// AGENTES ATIVOS NA REDE //</p>
@@ -534,6 +546,7 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
                   {configRecebida.twitchAuth && <span title="Autenticação Twitch Obrigatória" style={{ fontSize: '24px', cursor: 'help' }}>👾</span>}
                   {configRecebida.streamerMode && <span title="Modo Streamer Ativo" style={{ fontSize: '24px', cursor: 'help' }}>🎥</span>}
+                  <span title={`Ciclos de Rodadas: ${configRecebida.numCiclos}`} style={{ fontSize: '24px', cursor: 'help' }}>🔄 {configRecebida.numCiclos}</span>
               </div>
           )}
         </div>
@@ -574,7 +587,10 @@ function App() {
                         </div>
                         <textarea 
                             rows="8" autoFocus
-                            style={{ width: '100%', background: '#111', color: '#4ade80', border: '2px solid #4ade80', padding: '10px', fontSize: '18px', fontFamily: 'monospace', resize: 'none' }} 
+                            style={{ 
+                                width: '100%', background: '#111', color: '#4ade80', border: '2px solid #4ade80', padding: '10px', 
+                                fontSize: '18px', fontFamily: 'monospace', resize: 'none', fontWeight: 'bold' 
+                            }} 
                             placeholder="Digite aqui sua descrição..." 
                             value={textoPreparacao}
                             onChange={(e) => setTextoPreparacao(e.target.value)}
@@ -610,7 +626,18 @@ function App() {
                                 SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block' }}>{minhaPalavraInicial}</span>
                             </div>
                             <div style={paperStyle}>
-                                <textarea rows="8" style={{ width: '100%', background: 'transparent', border: 'none', resize: 'none', outline: 'none', fontSize: '22px', fontFamily: "'Courier New', Courier, monospace", lineHeight: '1.5em' }} placeholder="Descreva a palavra sem dizê-la..." onChange={(e) => setTextoPreparacao(e.target.value)}/>
+                                <textarea 
+                                    rows="8" 
+                                    // 🔥 CORREÇÃO: FONTE PRETA E NEGRITO
+                                    style={{ 
+                                        width: '100%', background: 'transparent', border: 'none', resize: 'none', 
+                                        outline: 'none', fontSize: '22px', fontFamily: "'Courier New', Courier, monospace", 
+                                        lineHeight: '1.5em', color: '#000000', fontWeight: 'bold' 
+                                    }} 
+                                    placeholder="Descreva a palavra sem dizê-la..." 
+                                    value={textoPreparacao} // Necessário para o auto-envio funcionar
+                                    onChange={(e) => setTextoPreparacao(e.target.value)}
+                                />
                             </div>
                             <button onClick={enviarTextoPreparacao} style={{ padding: '15px 40px', background: '#4ade80', color: 'black', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}>ARQUIVAR DOCUMENTO</button>
                         </>
@@ -631,11 +658,18 @@ function App() {
           <div style={{ padding: '20px', width: '100%' }}><HeaderDebug /></div>
           <div style={{ textAlign: 'center', color: 'white', marginBottom: '30px' }}><h2>DECODIFICAÇÃO</h2></div>
           <div style={paperStyle}>
-              <div style={{ position: 'absolute', top: '20px', right: '20px', border: '4px solid black', color: 'black', padding: '5px 15px', transform: 'rotate(-10deg)', fontSize: '24px', fontWeight: 'bold', opacity: 0.7 }}>CLASSIFIED</div>
+              {/* 🔥 CORREÇÃO: CARIMBO NO CANTO INFERIOR DIREITO E MAIS TRANSPARENTE */}
+              <div style={{ 
+                  position: 'absolute', bottom: '20px', right: '20px', 
+                  border: '4px solid black', color: 'black', padding: '5px 15px', 
+                  transform: 'rotate(-10deg)', fontSize: '24px', fontWeight: 'bold', opacity: 0.4, 
+                  pointerEvents: 'none' 
+              }}>
+                  CLASSIFIED
+              </div>
               {textoCensurado.split(/(\[CENSURADO\])/g).map((parte, i) => (parte === '[CENSURADO]' ? <span key={i} style={{backgroundColor: '#111', color: 'transparent', padding: '2px 5px', margin: '0 2px'}}>████</span> : <span key={i}>{parte}</span>))}
           </div>
           
-          {/* PAPEIZINHOS DOS SABOTADORES */}
           {meuPapel === 'SABOTADOR' && (
               <div style={{ 
                   display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '30px',
