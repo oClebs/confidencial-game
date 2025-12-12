@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
-// 🔥 IMPORTAÇÃO SEGURA
+// 🔥 IMPORTAÇÃO SEGURA: A lista fica no servidor
 const { PALAVRAS } = require('./palavras');
 
 const app = express();
@@ -38,13 +38,25 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
+// 🔥 TIMER CORRIGIDO: Usa tempo relativo (delta) para ignorar relógio errado do cliente
 function iniciarTimer(nomeSala, duracaoSegundos, callbackTimeout) {
-  if (salas[nomeSala] && salas[nomeSala].timer) clearTimeout(salas[nomeSala].timer);
-  const fimDoTempo = Date.now() + (duracaoSegundos * 1000);
-  io.to(nomeSala).emit('sincronizar_tempo', { duracao: duracaoSegundos, fim: fimDoTempo });
-  if (salas[nomeSala]) {
-    salas[nomeSala].timer = setTimeout(callbackTimeout, duracaoSegundos * 1000);
-  }
+  const sala = salas[nomeSala];
+  if (!sala) return;
+
+  if (sala.timer) clearTimeout(sala.timer);
+  
+  // 1. O servidor define o timestamp absoluto DELE para controle interno
+  sala.timestampFim = Date.now() + (duracaoSegundos * 1000);
+
+  // 2. Envia para todos apenas QUANTO TEMPO FALTA (Relativo)
+  io.to(nomeSala).emit('sincronizar_tempo', { 
+      segundosRestantes: duracaoSegundos 
+  });
+
+  sala.timer = setTimeout(() => {
+      sala.timestampFim = null; // Limpa quando acaba
+      callbackTimeout();
+  }, duracaoSegundos * 1000);
 }
 
 io.on('connection', (socket) => {
@@ -84,7 +96,8 @@ io.on('connection', (socket) => {
       sabotagens: {},
       timer: null,
       destructionTimer: null,
-      palavrasUsadas: new Set() 
+      palavrasUsadas: new Set(),
+      timestampFim: null // Para controle do timer
     };
 
     socket.join(novoId);
@@ -181,6 +194,7 @@ io.on('connection', (socket) => {
     io.to(idMaiusculo).emit('atualizar_sala', sala.jogadores);
     io.to(idMaiusculo).emit('log_evento', { msg: `🟢 ${nomeJogador} conectou-se.`, tipo: 'info' });
 
+    // 🔥 SINCRONIZAÇÃO PARA QUEM ENTROU ATRASADO
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
         const totalR = sala.jogadores.length * sala.config.numCiclos;
         
@@ -191,13 +205,27 @@ io.on('connection', (socket) => {
         }
         
         if (sala.fase === 'SABOTAGEM' || sala.fase === 'DECIFRANDO') {
+            // Recalcula quem é quem para enviar ao novato
+            const index = sala.indiceRodadaAtual;
+            const cifrador = sala.jogadores[index % sala.jogadores.length];
+            const decifrador = sala.jogadores[(index + 1) % sala.jogadores.length];
+            
+            const resumoPapeis = {
+                cifrador: cifrador.nome,
+                decifrador: decifrador.nome,
+                sabotadores: sala.jogadores
+                    .filter(j => j.id !== cifrador.id && j.id !== decifrador.id)
+                    .map(j => j.nome)
+            };
+
             socket.emit('nova_rodada', {
                 fase: 'SABOTAGEM',
                 rodadaAtual: sala.indiceRodadaAtual + 1,
                 totalRodadas: totalR,
                 meuPapel: 'SABOTADOR',
                 palavraRevelada: sala.dadosRodada?.palavra,
-                descricao: null
+                descricao: null,
+                protagonistas: resumoPapeis // Envia nomes
             });
 
             if (sala.fase === 'DECIFRANDO') {
@@ -205,6 +233,15 @@ io.on('connection', (socket) => {
                     textoCensurado: sala.dadosRodada.textoCensurado,
                     palavrasEfetivas: [] 
                 });
+            }
+        }
+
+        // 🔥 CORREÇÃO DE TIMER (Sincronia Fina)
+        if (sala.timestampFim) {
+            const agoraServidor = Date.now();
+            const segundosQueFaltam = Math.ceil((sala.timestampFim - agoraServidor) / 1000);
+            if (segundosQueFaltam > 0) {
+                socket.emit('sincronizar_tempo', { segundosRestantes: segundosQueFaltam });
             }
         }
     }
@@ -303,7 +340,7 @@ io.on('connection', (socket) => {
     let textoBase = cifradorDaVez.meuTexto || "TEXTO PERDIDO"; 
     const palavraProibida = cifradorDaVez.minhaPalavra || "???"; 
     
-    // Auto-censura inicial (também com lógica de plural simples)
+    // Auto-censura inicial (Singular/Plural simples)
     let raizProibida = palavraProibida;
     if (raizProibida.toUpperCase().endsWith('ES')) raizProibida = raizProibida.slice(0, -2);
     else if (raizProibida.toUpperCase().endsWith('S')) raizProibida = raizProibida.slice(0, -1);
@@ -319,11 +356,28 @@ io.on('connection', (socket) => {
     
     const totalR = sala.jogadores.length * sala.config.numCiclos;
 
+    // 🔥 DEFININDO PROTAGONISTAS PARA O FRONT
+    const resumoPapeis = {
+        cifrador: cifradorDaVez.nome,
+        decifrador: decifradorDaVez.nome,
+        sabotadores: sala.jogadores
+            .filter(j => j.id !== cifradorDaVez.id && j.id !== decifradorDaVez.id)
+            .map(j => j.nome)
+    };
+
     sala.jogadores.forEach(jogador => { 
-      let payload = { fase: 'SABOTAGEM', rodadaAtual: index + 1, totalRodadas: totalR, meuPapel: jogador.papel };
+      let payload = { 
+          fase: 'SABOTAGEM', 
+          rodadaAtual: index + 1, 
+          totalRodadas: totalR, 
+          meuPapel: jogador.papel,
+          protagonistas: resumoPapeis // <--- ENVIA NOMES
+      };
+
       if (jogador.papel === 'CIFRADOR') { payload.descricao = sala.dadosRodada.descricao; payload.palavraRevelada = sala.dadosRodada.palavra; } 
       else if (jogador.papel === 'SABOTADOR') { payload.palavraRevelada = sala.dadosRodada.palavra; payload.descricao = null; } 
       else { payload.descricao = null; payload.palavraRevelada = null; }
+      
       io.to(jogador.id).emit('nova_rodada', payload); 
     });
   }
@@ -335,7 +389,7 @@ io.on('connection', (socket) => {
     if (totalEnviados >= totalSabotadores) { if (sala.timer) clearTimeout(sala.timer); finalizeFaseSabotagem(nomeSala); }
   });
 
-  // 🔥 ATUALIZADO: LÓGICA INTELIGENTE DE CENSURA (PLURAL/SINGULAR)
+  // 🔥 REGEX INTELIGENTE (PLURAL/SINGULAR)
   function finalizeFaseSabotagem(nomeSala) {
     const sala = salas[nomeSala]; if (!sala) return;
     let textoCensurado = sala.dadosRodada.descricao; 
@@ -345,19 +399,13 @@ io.on('connection', (socket) => {
 
     palavrasEfetivas.forEach(palavra => { 
         const p = palavra.trim();
-        // Estratégia: Normalizar para a "raiz" (singular) e criar regex flexível
         let raiz = p;
         const upper = p.toUpperCase();
         
-        // Remove plural simples (S) ou (ES) para achar a raiz
         if (upper.endsWith('ES')) raiz = p.slice(0, -2);
         else if (upper.endsWith('S') && !upper.endsWith('SS')) raiz = p.slice(0, -1);
         
-        // Regex: Raiz + (es ou s opcional)
-        // Ex: "Gato" vira "Gato(s|es)?" -> pega Gato, Gatos
-        // Ex: "Gatos" vira "Gato(s|es)?" -> pega Gato, Gatos
         const regex = new RegExp(`${raiz}(es|s)?`, 'gi'); 
-        
         textoCensurado = textoCensurado.replace(regex, '[CENSURADO]'); 
     });
 
@@ -365,7 +413,11 @@ io.on('connection', (socket) => {
     
     iniciarTimer(nomeSala, sala.config.tempos.decifracao, () => { calcularPontuacaoEFinalizarRodada(nomeSala, null); });
     
-    io.to(nomeSala).emit('fase_decifrar', { textoCensurado: textoCensurado, palavrasEfetivas: palavrasEfetivas });
+    // Envia palavras efetivas
+    io.to(nomeSala).emit('fase_decifrar', { 
+        textoCensurado: textoCensurado, 
+        palavrasEfetivas: palavrasEfetivas 
+    });
   }
 
   socket.on('decifrador_chuta', ({ nomeSala, tentativa }) => { const sala = salas[nomeSala]; if (sala && sala.timer) clearTimeout(sala.timer); calcularPontuacaoEFinalizarRodada(nomeSala, tentativa); });
@@ -382,27 +434,25 @@ io.on('connection', (socket) => {
 
     const textoOriginal = sala.dadosRodada.descricao.toLowerCase(); const mapaSabotagem = {}; 
     
-    // Pontuação de Sabotagem (Também precisa considerar plural para ser justa!)
     for (const [idSabotador, palavras] of Object.entries(sala.sabotagens)) { 
         palavras.forEach(p => { 
             const palavraLimpa = p.trim();
             if (!palavraLimpa) return;
 
-            // Mesma lógica de raiz para pontuar
             let raiz = palavraLimpa.toUpperCase();
             if (raiz.endsWith('ES')) raiz = raiz.slice(0, -2);
             else if (raiz.endsWith('S') && !raiz.endsWith('SS')) raiz = raiz.slice(0, -1);
             const regex = new RegExp(`${raiz}(es|s)?`, 'i');
 
             if (regex.test(textoOriginal)) { 
-                const chave = raiz.toLowerCase(); // Usa a raiz como chave para agrupar Gato e Gatos
+                const chave = raiz.toLowerCase(); 
                 if (!mapaSabotagem[chave]) mapaSabotagem[chave] = []; 
                 mapaSabotagem[chave].push(idSabotador); 
             } 
         }); 
     }
 
-    for (const [palavra, sabotadoresIds] of Object.entries(mapaSabotagem)) { const ehUnica = sabotadoresIds.length === 1; const pontosGanhos = ehUnica ? 2 : 1; sabotadoresIds.forEach(id => { const sabotador = sala.jogadores.find(j => j.id === id); if (sabotador) sabotador.pontos += pontosGanhos; }); resumoPontos.push(`Palavra "${palavra}" (ou variação) sabotada! (${pontosGanhos} pts p/ sabotadores)`); }
+    for (const [palavra, sabotadoresIds] of Object.entries(mapaSabotagem)) { const ehUnica = sabotadoresIds.length === 1; const pontosGanhos = ehUnica ? 2 : 1; sabotadoresIds.forEach(id => { const sabotador = sala.jogadores.find(j => j.id === id); if (sabotador) sabotador.pontos += pontosGanhos; }); resumoPontos.push(`Palavra "${palavra}" sabotada! (${pontosGanhos} pts p/ sabotadores)`); }
     io.to(nomeSala).emit('resultado_rodada', { acertou, palavraSecreta, tentativa: tentativa || "Tempo esgotado", resumo: resumoPontos, ranking: sala.jogadores.sort((a, b) => b.pontos - a.pontos) });
   }
 
