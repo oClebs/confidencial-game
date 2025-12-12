@@ -60,7 +60,10 @@ function App() {
   const [statusPreparacao, setStatusPreparacao] = useState({ prontos: 0, total: 0 });
   const [descricaoRecebida, setDescricaoRecebida] = useState("");
   const [textoCensurado, setTextoCensurado] = useState("");
-  const [inputsSabotagem, setInputsSabotagem] = useState(["", "", "", "", ""]);
+  
+  // 🔥 ATUALIZADO: ARRAY DE 10 INPUTS PARA SABOTAGEM
+  const [inputsSabotagem, setInputsSabotagem] = useState(Array(10).fill(""));
+  
   const [sabotagemEnviada, setSabotagemEnviada] = useState(false);
   const [tentativaDecifrador, setTentativaDecifrador] = useState("");
   const [resultadoRodada, setResultadoRodada] = useState(null);
@@ -73,7 +76,7 @@ function App() {
   const [configSala, setConfigSala] = useState({
       twitchAuth: false,
       streamerMode: false,
-      numCiclos: 1, // 🔥 NOVO PADRÃO
+      numCiclos: 1, 
       tempos: { preparacao: 120, sabotagem: 30, decifracao: 45 }
   });
   const [configRecebida, setConfigRecebida] = useState(null); 
@@ -158,9 +161,34 @@ function App() {
     });
     
     socket.on('aviso_sala', (dados) => { setAviso(dados); if (dados.tipo === 'sucesso') setTimeout(() => setAviso(null), 5000); });
-    socket.on('inicio_preparacao', (dados) => { setFase('PREPARACAO'); setMinhaPalavraInicial(dados.palavra); setJaEnvieiPreparacao(false); setTextoPreparacao(""); setResultadoRodada(null); setJanelaExternaAberta(false); });
+    
+    // 🔥 ATUALIZADO: RESET PARA 10 CAMPOS VAZIOS AO INICIAR PREPARAÇÃO
+    socket.on('inicio_preparacao', (dados) => { 
+        setFase('PREPARACAO'); 
+        setMinhaPalavraInicial(dados.palavra); 
+        setJaEnvieiPreparacao(false); 
+        setTextoPreparacao(""); 
+        setResultadoRodada(null); 
+        setJanelaExternaAberta(false); 
+        setInputsSabotagem(Array(10).fill("")); // <--- AQUI
+    });
+    
     socket.on('status_preparacao', (dados) => { setStatusPreparacao(dados); });
-    socket.on('nova_rodada', (dados) => { setFase('SABOTAGEM'); setMeuPapel(dados.meuPapel); setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); setInputsSabotagem(["", "", "", "", ""]); setSabotagemEnviada(false); setTentativaDecifrador(""); setDescricaoRecebida(dados.descricao || ""); setResultadoRodada(null); setJanelaExternaAberta(false); setPalavrasSabotadasRodada([]); if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); });
+    
+    // 🔥 ATUALIZADO: RESET PARA 10 CAMPOS VAZIOS NA NOVA RODADA
+    socket.on('nova_rodada', (dados) => { 
+        setFase('SABOTAGEM'); 
+        setMeuPapel(dados.meuPapel); 
+        setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
+        setInputsSabotagem(Array(10).fill("")); // <--- E AQUI TAMBÉM
+        setSabotagemEnviada(false); 
+        setTentativaDecifrador(""); 
+        setDescricaoRecebida(dados.descricao || ""); 
+        setResultadoRodada(null); 
+        setJanelaExternaAberta(false); 
+        setPalavrasSabotadasRodada([]); 
+        if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); 
+    });
     
     socket.on('fase_decifrar', (dados) => { 
         setFase('DECIFRANDO'); 
@@ -422,6 +450,7 @@ function App() {
                 ABANDONAR
             </button>
         )}
+        
         {menuBan.visivel && (
             <div style={menuBanStyle} onClick={confirmarBan}>
                 🔨 BANIR AGENTE <br/> <span style={{color: 'white'}}>{menuBan.jogadorNome}</span>
@@ -467,7 +496,7 @@ function App() {
                       Modo Streamer (Janela Segura)
                   </label>
 
-                  {/* 🔥 NOVO INPUT: CICLOS DE RODADAS */}
+                  {/* 🔥 INPUT CICLOS */}
                   <div style={{ margin: '10px 0' }}>
                       <label style={{ fontSize: '14px', fontWeight: 'bold' }}>CICLOS DE RODADAS (Voltas na mesa):</label>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
@@ -517,7 +546,6 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
                   {configRecebida.twitchAuth && <span title="Autenticação Twitch Obrigatória" style={{ fontSize: '24px', cursor: 'help' }}>👾</span>}
                   {configRecebida.streamerMode && <span title="Modo Streamer Ativo" style={{ fontSize: '24px', cursor: 'help' }}>🎥</span>}
-                  <span title={`Ciclos de Rodadas: ${configRecebida.numCiclos}`} style={{ fontSize: '24px', cursor: 'help' }}>🔄 {configRecebida.numCiclos}</span>
               </div>
           )}
         </div>
@@ -632,7 +660,6 @@ function App() {
                           fontFamily: 'cursive', transform: `rotate(${Math.random() * 10 - 5}deg)`,
                           boxShadow: '2px 2px 5px rgba(0,0,0,0.3)', fontSize: '14px', fontWeight: 'bold'
                       }}>
-                          {/* SEGREDO DO STREAMER: CENSURA SE FOR HOST E STREAMER MODE ATIVO */}
                           {(souHost && configRecebida?.streamerMode) ? '█████' : p}
                       </div>
                   ))}
