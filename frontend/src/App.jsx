@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 import logoImage from './assets/logo.png'; 
 
 // 🟣 COLOQUE SEU CLIENT ID AQUI (Mantenha as aspas)
-const TWITCH_CLIENT_ID = 'SEU_CLIENT_ID_AQUI_ENTRE_AS_ASPAS'; 
+const TWITCH_CLIENT_ID = 'hoevm6fscw93d5c01d7ermgu6nbhk7'; 
 
 // URL DINÂMICA PARA DEPLOY
 const socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
@@ -666,4 +666,5 @@ function App() {
   return <div>Carregando sistema...</div>;
 }
 
+// teste deploy
 export default App;
