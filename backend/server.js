@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
-// 🔥 IMPORTAÇÃO SEGURA (Certifique-se que o arquivo palavras.js existe na mesma pasta)
+// IMPORTAÇÃO DAS PALAVRAS (Garanta que o arquivo palavras.js existe)
 const { PALAVRAS } = require('./palavras');
 
 const app = express();
@@ -40,7 +40,7 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
-// 🔥 REGEX PODEROSA: Ignora acentos, case e plural simples
+// Regex que ignora acentos, maiúsculas e plurais simples
 function gerarRegexFlexivel(texto) {
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const base = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -54,7 +54,7 @@ function gerarRegexFlexivel(texto) {
     for (let char of base) {
         pattern += mapa[char] || escapeRegex(char);
     }
-    pattern += "(es|s)?"; // Plural opcional (Gato pega Gatos)
+    pattern += "(es|s)?"; 
 
     return new RegExp(pattern, 'gi');
 }
@@ -65,7 +65,6 @@ function iniciarTimer(nomeSala, duracaoSegundos, callbackTimeout) {
 
   if (sala.timer) clearTimeout(sala.timer);
   
-  // Timestamp absoluto para o frontend sincronizar
   sala.timestampFim = Date.now() + (duracaoSegundos * 1000);
 
   io.to(nomeSala).emit('sincronizar_tempo', { 
@@ -99,7 +98,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 🔥 2. CRIAÇÃO DE SALA (COM AVATAR)
+  // 🔥 2. CRIAÇÃO DE SALA
   socket.on('criar_sala', ({ nomeJogador, senha, config, twitchData }) => {
     const novoId = gerarIdSala();
     const tokenSeguro = gerarTokenSeguro(); 
@@ -156,7 +155,7 @@ io.on('connection', (socket) => {
     console.log(`🏠 Sala criada: ${novoId} por ${nomeJogador}`);
   });
 
-  // 🔥 3. ENTRADA NA SALA (CONVIDADO OU HOST)
+  // 🔥 3. ENTRADA NA SALA
   socket.on('entrar_sala', ({ roomId, senha, nomeJogador, token, twitchData }) => {
     const idMaiusculo = roomId.toUpperCase(); 
 
@@ -193,7 +192,6 @@ io.on('connection', (socket) => {
             return;
         }
     } else {
-        // Validação de nome único
         const nomeExiste = sala.jogadores.some(p => p.nome === nomeJogador);
         if (nomeExiste) {
             socket.emit('erro_login', 'Esse nome já está em uso na sala!');
@@ -203,7 +201,6 @@ io.on('connection', (socket) => {
 
     socket.join(idMaiusculo);
     
-    // Define a foto do jogador (se veio da twitchData ou null)
     const fotoJogador = twitchData ? twitchData.foto : null;
 
     const novoJogador = { 
@@ -235,7 +232,6 @@ io.on('connection', (socket) => {
     io.to(idMaiusculo).emit('atualizar_sala', sala.jogadores);
     io.to(idMaiusculo).emit('log_evento', { msg: `🟢 ${nomeJogador} conectou-se.`, tipo: 'info' });
 
-    // SINCRONIZA QUEM ENTROU NO MEIO DO JOGO
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
         const totalR = sala.jogadores.length * sala.config.numCiclos;
         

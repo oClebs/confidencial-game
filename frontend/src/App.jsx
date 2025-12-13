@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import io from 'socket.io-client';
 import logoImage from './assets/logo.png'; 
 
-// 🟣 SEU CLIENT ID
+// 🟣 SEU CLIENT ID DA TWITCH
 const TWITCH_CLIENT_ID = 'hoevm6fscw93d5c01d7ermgu6nbhk7'; 
 
+// URL DINÂMICA
 const socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
 
 const JanelaExterna = ({ children, onClose }) => {
@@ -14,7 +15,11 @@ const JanelaExterna = ({ children, onClose }) => {
 
   useEffect(() => {
     const win = window.open('', '', 'width=600,height=500,left=200,top=200,menubar=no,toolbar=no,location=no,status=no');
-    if (!win) { alert("Permita pop-ups!"); onClose(); return; }
+    if (!win) {
+        alert("O NAVEGADOR BLOQUEOU O POP-UP! Permita pop-ups para usar o Modo Streamer.");
+        onClose();
+        return;
+    }
     externalWindow.current = win;
     win.document.head.innerHTML = document.head.innerHTML;
     win.document.body.style.backgroundColor = '#1c1917';
@@ -60,11 +65,14 @@ function App() {
   const [alvoLocal, setAlvoLocal] = useState(0);
   const [modoStreamerLocal, setModoStreamerLocal] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
-
-  // 🔥 ESTADO NOVO: Saber se a sala que estou tentando entrar é Twitch
   const [salaEhTwitch, setSalaEhTwitch] = useState(false);
 
-  const [configSala, setConfigSala] = useState({ twitchAuth: false, streamerMode: false, numCiclos: 1, tempos: { preparacao: 120, sabotagem: 30, decifracao: 45 } });
+  const [configSala, setConfigSala] = useState({
+      twitchAuth: false,
+      streamerMode: false,
+      numCiclos: 1, 
+      tempos: { preparacao: 120, sabotagem: 30, decifracao: 45 }
+  });
   const [configRecebida, setConfigRecebida] = useState(null); 
   const [janelaExternaAberta, setJanelaExternaAberta] = useState(false);
   const [menuBan, setMenuBan] = useState({ visivel: false, x: 0, y: 0, jogadorId: null, jogadorNome: "" });
@@ -77,15 +85,19 @@ function App() {
   useEffect(() => {
       audioSuccess.current = new Audio('/success.mp3');
       audioError.current = new Audio('/error.mp3');
-      audioSuccess.current.volume = 0.5; audioError.current.volume = 0.5;
+      audioSuccess.current.volume = 0.5;
+      audioError.current.volume = 0.5;
   }, []);
 
   const adicionarLog = (dados) => {
-      const id = Date.now(); setLogsSistema(prev => [...prev, { ...dados, id }]);
-      setTimeout(() => { setLogsSistema(prev => prev.filter(log => log.id !== id)); }, 4000);
+      const id = Date.now();
+      setLogsSistema(prev => [...prev, { ...dados, id }]);
+      setTimeout(() => {
+          setLogsSistema(prev => prev.filter(log => log.id !== id));
+      }, 4000);
   };
 
-  // 🔥 DETECTA QUANDO O ID DA SALA MUDA PARA VERIFICAR SE É TWITCH
+  // Detecta se a sala é Twitch ao digitar 4 letras
   useEffect(() => {
       if (sala.length === 4) {
           socket.emit('verificar_sala', sala);
@@ -103,7 +115,9 @@ function App() {
 
           if (accessToken) {
               try {
-                  const response = await fetch('https://api.twitch.tv/helix/users', { headers: { 'Authorization': `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID } });
+                  const response = await fetch('https://api.twitch.tv/helix/users', {
+                      headers: { 'Authorization': `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID }
+                  });
                   const data = await response.json();
                   if (data.data && data.data.length > 0) {
                       const userTwitch = data.data[0];
@@ -114,7 +128,12 @@ function App() {
                           const configParsed = JSON.parse(savedConfig);
                           localStorage.removeItem('temp_create_room_config');
                           setNome(userTwitch.display_name);
-                          socket.emit('criar_sala', { nomeJogador: userTwitch.display_name, senha: "", config: configParsed, twitchData: { id: userTwitch.id, login: userTwitch.login, token: accessToken, foto: userTwitch.profile_image_url } });
+                          socket.emit('criar_sala', { 
+                              nomeJogador: userTwitch.display_name, 
+                              senha: "", 
+                              config: configParsed, 
+                              twitchData: { id: userTwitch.id, login: userTwitch.login, token: accessToken, foto: userTwitch.profile_image_url } 
+                          });
                           return;
                       }
 
@@ -124,7 +143,6 @@ function App() {
                           localStorage.removeItem('temp_join_room_id');
                           setSala(savedRoomId);
                           setNome(userTwitch.display_name);
-                          // Envia entrada com dados da twitch
                           socket.emit('entrar_sala', { 
                               nomeJogador: userTwitch.display_name, 
                               roomId: savedRoomId, 
@@ -135,7 +153,8 @@ function App() {
                       }
                   }
               } catch (error) {
-                  console.error("Erro Twitch:", error); setErroLogin("Falha na autenticação Twitch.");
+                  console.error("Erro Twitch:", error);
+                  setErroLogin("Falha na autenticação Twitch.");
               }
           }
       }
@@ -150,17 +169,17 @@ function App() {
     if (roomParam) {
         setSala(roomParam);
         setModoLogin('ENTRAR');
-        socket.emit('verificar_sala', roomParam); // Já verifica na chegada
+        socket.emit('verificar_sala', roomParam);
         window.history.replaceState({}, document.title, "/");
     }
 
     const saved = localStorage.getItem('censorizador_session');
     if (saved) {
-      const parsed = JSON.parse(saved); setSessaoSalva(parsed);
+      const parsed = JSON.parse(saved);
+      setSessaoSalva(parsed);
       if (parsed.roomId) socket.emit('verificar_sala', parsed.roomId);
     }
 
-    // 🔥 RECEBE INFO DA SALA (SE É TWITCH OU NÃO)
     socket.on('info_sala_retorno', (dados) => {
         setSalaEhTwitch(dados.twitchAuth);
     });
@@ -168,14 +187,22 @@ function App() {
     socket.on('sala_criada_sucesso', (dados) => { 
       const sessionData = { roomId: dados.roomId, token: dados.userToken, nome: dados.jogadores[0].nome, senha: senha }; 
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData)); 
-      setSala(dados.roomId); setJogadores(dados.jogadores); setConfigRecebida(dados.config); setEntrou(true); setErroLogin(""); setNome(dados.jogadores[0].nome);
+      setSala(dados.roomId); 
+      setJogadores(dados.jogadores); 
+      setConfigRecebida(dados.config); 
+      setEntrou(true); 
+      setFase('LOBBY'); // 🔥 GARANTE QUE NÃO FICA PRESO
+      setErroLogin(""); 
+      setNome(dados.jogadores[0].nome);
     });
     
     socket.on('entrada_sucesso', (dados) => { 
       const tokenSalvo = localStorage.getItem('censorizador_session') ? JSON.parse(localStorage.getItem('censorizador_session')).token : null; 
-      const sessionData = { roomId: dados.roomId, token: tokenSalvo, nome: dados.jogadores.find(j=>j.id===socket.id).nome, senha: senha }; 
+      const eu = dados.jogadores.find(j => j.id === socket.id);
+      const sessionData = { roomId: dados.roomId, token: tokenSalvo, nome: eu ? eu.nome : nome, senha: senha }; 
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData)); 
-      setSala(dados.roomId); setJogadores(dados.jogadores); setFase(dados.fase); setConfigRecebida(dados.config); setEntrou(true); setErroLogin(""); 
+      setSala(dados.roomId); setJogadores(dados.jogadores); setFase(dados.fase); setConfigRecebida(dados.config);
+      setEntrou(true); setErroLogin(""); 
     });
 
     socket.on('sessao_invalida', () => { localStorage.removeItem('censorizador_session'); setSessaoSalva(null); setSalaEhTwitch(false); });
@@ -185,12 +212,28 @@ function App() {
     socket.on('atualizar_sala', (lista) => { setJogadores(lista); const eu = lista.find(j => j.id === socket.id); if (eu) setSouHost(eu.isHost); });
     socket.on('sala_encerrada', (motivo) => { localStorage.removeItem('censorizador_session'); alert(motivo); window.location.reload(); });
     socket.on('aviso_sala', (dados) => { setAviso(dados); if (dados.tipo === 'sucesso') setTimeout(() => setAviso(null), 5000); });
-    socket.on('inicio_preparacao', (dados) => { setFase('PREPARACAO'); setMinhaPalavraInicial(dados.palavra); setJaEnvieiPreparacao(false); setTextoPreparacao(""); setResultadoRodada(null); setJanelaExternaAberta(false); setInputsSabotagem(Array(10).fill("")); });
+    
+    socket.on('inicio_preparacao', (dados) => { 
+        setFase('PREPARACAO'); setMinhaPalavraInicial(dados.palavra); setJaEnvieiPreparacao(false); 
+        setTextoPreparacao(""); setResultadoRodada(null); setJanelaExternaAberta(false); setInputsSabotagem(Array(10).fill(""));
+    });
     socket.on('status_preparacao', (dados) => { setStatusPreparacao(dados); });
-    socket.on('nova_rodada', (dados) => { setFase('SABOTAGEM'); setMeuPapel(dados.meuPapel); setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); setInputsSabotagem(Array(10).fill("")); setSabotagemEnviada(false); setTentativaDecifrador(""); setDescricaoRecebida(dados.descricao || ""); setResultadoRodada(null); setJanelaExternaAberta(false); setPalavrasSabotadasRodada([]); if(dados.protagonistas) setProtagonistas(dados.protagonistas); if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); });
-    socket.on('fase_decifrar', (dados) => { setFase('DECIFRANDO'); setTextoCensurado(dados.textoCensurado); setPalavrasSabotadasRodada(dados.palavrasEfetivas || []); if (dados.segundosRestantes) { const agora = Date.now(); setAlvoLocal(agora + (dados.segundosRestantes * 1000)); } });
+    socket.on('nova_rodada', (dados) => { 
+        setFase('SABOTAGEM'); setMeuPapel(dados.meuPapel); setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
+        setInputsSabotagem(Array(10).fill("")); setSabotagemEnviada(false); setTentativaDecifrador(""); 
+        setDescricaoRecebida(dados.descricao || ""); setResultadoRodada(null); setJanelaExternaAberta(false); setPalavrasSabotadasRodada([]); 
+        if(dados.protagonistas) setProtagonistas(dados.protagonistas);
+        if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); 
+    });
+    socket.on('fase_decifrar', (dados) => { 
+        setFase('DECIFRANDO'); setTextoCensurado(dados.textoCensurado); setPalavrasSabotadasRodada(dados.palavrasEfetivas || []); 
+        if (dados.segundosRestantes) { const agora = Date.now(); setAlvoLocal(agora + (dados.segundosRestantes * 1000)); }
+    });
     socket.on('sincronizar_tempo', ({ segundosRestantes }) => { const agora = Date.now(); setAlvoLocal(agora + (segundosRestantes * 1000)); });
-    socket.on('resultado_rodada', (dados) => { setFase('RESULTADO'); setResultadoRodada(dados); setJogadores(dados.ranking); setAlvoLocal(0); if (dados.acertou) { audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e)); } else { audioError.current?.play().catch(e => console.log("Áudio bloqueado", e)); } });
+    socket.on('resultado_rodada', (dados) => { 
+        setFase('RESULTADO'); setResultadoRodada(dados); setJogadores(dados.ranking); setAlvoLocal(0);
+        if (dados.acertou) { audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e)); } else { audioError.current?.play().catch(e => console.log("Áudio bloqueado", e)); }
+    });
     socket.on('fim_de_jogo', () => { setFase('FIM'); });
 
     const handleClickFora = () => { if(menuBan.visivel) setMenuBan({...menuBan, visivel: false}); };
@@ -203,10 +246,20 @@ function App() {
       socket.off('info_sala_retorno');
       window.removeEventListener('click', handleClickFora);
     };
-  }, [nome, senha, menuBan, sala]); // Adicionei 'sala' na dependencia
+  }, [nome, senha, menuBan, sala]);
 
-  useEffect(() => { if (alvoLocal === 0) return; const interval = setInterval(() => { const agora = Date.now(); const delta = Math.ceil((alvoLocal - agora) / 1000); setTempoRestante(delta > 0 ? delta : 0); if (delta <= 0) setAlvoLocal(0); }, 200); return () => clearInterval(interval); }, [alvoLocal]);
-  useEffect(() => { if (fase === 'PREPARACAO' && tempoRestante === 1 && !jaEnvieiPreparacao) { if (textoPreparacao.length > 0) { enviarTextoPreparacao(); } else { socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); } } }, [tempoRestante, fase, jaEnvieiPreparacao, textoPreparacao]);
+  useEffect(() => {
+      if (alvoLocal === 0) return;
+      const interval = setInterval(() => { const agora = Date.now(); const delta = Math.ceil((alvoLocal - agora) / 1000); setTempoRestante(delta > 0 ? delta : 0); if (delta <= 0) setAlvoLocal(0); }, 200);
+      return () => clearInterval(interval);
+  }, [alvoLocal]);
+
+  useEffect(() => {
+      if (fase === 'PREPARACAO' && tempoRestante === 1 && !jaEnvieiPreparacao) {
+          if (textoPreparacao.length > 0) { enviarTextoPreparacao(); } 
+          else { socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); }
+      }
+  }, [tempoRestante, fase, jaEnvieiPreparacao, textoPreparacao]);
 
   const acaoReconectar = () => { if (sessaoSalva) { setNome(sessaoSalva.nome); setSala(sessaoSalva.roomId); setSenha(sessaoSalva.senha); socket.emit('entrar_sala', { nomeJogador: sessaoSalva.nome, roomId: sessaoSalva.roomId, senha: sessaoSalva.senha, token: sessaoSalva.token }); } };
   
@@ -234,10 +287,8 @@ function App() {
   
   const acaoEntrarSala = () => { 
       if (salaEhTwitch) {
-          // Se a sala é Twitch, força login
           autenticarTwitchGeral('ENTRAR');
       } else {
-          // Sala normal com senha
           if (nome && sala && senha) { 
               const token = sessaoSalva?.token; 
               socket.emit('entrar_sala', { nomeJogador: nome, roomId: sala, senha: senha, token }); 
@@ -305,7 +356,6 @@ function App() {
                 <h3 style={{textAlign: 'center'}}>// LOGIN DE AGENTE //</h3>
                 <input placeholder="CÓDIGO DA OPERAÇÃO (ID)" value={sala} onChange={e => setSala(e.target.value)} style={{...inputStyle, textTransform: 'uppercase'}} />
                 
-                {/* 🔥 LÓGICA DE EXIBIÇÃO: SENHA OU BOTÃO TWITCH */}
                 {salaEhTwitch ? (
                     <div style={{ margin: '15px 0' }}>
                         <p style={{ color: '#9146FF', fontWeight: 'bold', textAlign: 'center', marginBottom: '10px' }}>👾 SALA REQUER AUTENTICAÇÃO TWITCH</p>
@@ -330,14 +380,42 @@ function App() {
     );
   }
 
-  // (Blocos de fases continuam iguais, vou omitir para caber, mas o código está completo na memória do seu App.jsx)
+  if (fase === 'LOBBY') {
+    return commonRender(
+      <div style={mainWrapper}>
+        <RulesWidget />
+        <div style={{ borderBottom: '4px solid #d97706', paddingBottom: '20px', marginBottom: '30px', textAlign: 'center', width: '100%' }}>
+          <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '400px', border: '3px solid #d97706', boxSizing: 'border-box', boxShadow: '5px 5px 0 rgba(0,0,0,0.3)', marginBottom: '20px' }} />
+          <p style={{ letterSpacing: '3px', marginTop: '10px', fontSize: '1rem', color: '#d97706', fontWeight: 'bold' }}>// AGENTES ATIVOS NA REDE //</p>
+          <div style={stickyNoteStyle}><span style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>CÓDIGO DA MISSÃO:</span><strong style={{ fontSize: '2.5rem', letterSpacing: '3px' }}>{sala}</strong></div>
+          <button onClick={copiarLinkConvite} style={{ display: 'block', margin: '15px auto', background: '#d97706', border: 'none', color: 'white', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold' }}>{linkCopiado ? "COPIADO! ✅" : "🔗 COPIAR LINK DE CONVITE"}</button>
+          {configRecebida && (<div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>{configRecebida.twitchAuth && <span title="Autenticação Twitch Obrigatória" style={{ fontSize: '24px', cursor: 'help' }}>👾</span>}{configRecebida.streamerMode && <span title="Modo Streamer Ativo" style={{ fontSize: '24px', cursor: 'help' }}>🎥</span>}<span title={`Ciclos de Rodadas: ${configRecebida.numCiclos}`} style={{ fontSize: '24px', cursor: 'help' }}>🔄 {configRecebida.numCiclos}</span></div>)}
+        </div>
+        <div style={{ width: '90%', height: '4px', background: '#d97706', margin: '10px 0 40px 0', borderRadius: '2px' }}></div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', justifyContent: 'center', width: '100%', maxWidth: '1000px' }}>{jogadores.map((j, i) => (<div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : ""} style={{ ...agentCardStyle, transform: `rotate(${i % 2 === 0 ? '2deg' : '-2deg'})`, cursor: souHost ? 'context-menu' : 'default' }}><div style={{ width: '70px', height: '70px', background: '#e2e8f0', borderRadius: '50%', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #333', overflow: 'hidden' }}>{j.foto ? <img src={j.foto} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <span style={{fontSize: '35px'}}>🕵️‍♂️</span>}</div><div style={{ fontSize: '1.3rem', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '2px solid #333', width: '100%', textAlign: 'center', paddingBottom: '5px', marginBottom: '5px' }}>{j.nome}</div><div style={{ fontSize: '0.9rem', color: '#666', fontFamily: 'sans-serif' }}>SCORE: {j.pontos}</div><div style={{ marginTop: 'auto', marginBottom: '10px' }}>{j.isHost ? (<div style={{ ...stampStyle, borderColor: '#b91c1c', color: '#b91c1c' }}>MISSION DIRECTOR</div>) : (<div style={{ ...stampStyle, borderColor: '#15803d', color: '#15803d', transform: 'rotate(-5deg)' }}>FIELD AGENT</div>)}</div></div>))}</div>
+        <div style={{ marginTop: 'auto', marginBottom: '40px', width: '100%', textAlign: 'center' }}>{souHost ? (<div style={{ display: 'inline-block' }}>{jogadores.length >= 3 ? (<button onClick={iniciarJogo} style={{ padding: '25px 60px', fontSize: '24px', background: 'transparent', color: '#f4e4bc', border: '4px solid #f4e4bc', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', boxShadow: '0 0 15px rgba(244, 228, 188, 0.3)' }}>⚠ EXECUTAR PROTOCOLO ⚠</button>) : (<div style={{ color: '#fbbf24', border: '2px dashed #fbbf24', padding: '20px 40px', display: 'inline-block', fontSize: '1.2rem', letterSpacing: '1px' }}>// AGUARDANDO EQUIPE COMPLETA (MÍN. 3) //</div>)}</div>) : (<div style={{ color: '#fbbf24', border: '2px dashed #fbbf24', padding: '15px 30px', display: 'inline-block', fontSize: '1.2rem', letterSpacing: '1px' }}>// AGUARDANDO COMANDANTE INICIAR //</div>)}</div>
+      </div>
+    );
+  }
+
   if (fase === 'PREPARACAO') { const devoEsconder = (souHost && configRecebida?.streamerMode) || modoStreamerLocal; return commonRender(<div style={mainWrapper}><TimerDisplay/>{janelaExternaAberta && (<JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '30px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#e5e5e5', fontFamily: "'Courier New', Courier, monospace" }}><h2 style={{ color: '#4ade80', textTransform: 'uppercase', borderBottom: '2px solid #4ade80' }}>📂 DOSSIÊ SECRETO</h2><div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace', width: '100%', boxSizing: 'border-box' }}>SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block', wordBreak: 'break-all' }}>{minhaPalavraInicial}</span></div><textarea rows="8" autoFocus style={{ width: '100%', background: '#111', color: '#4ade80', border: '2px solid #4ade80', padding: '10px', fontSize: '18px', fontFamily: 'monospace', resize: 'none' }} placeholder="Digite aqui sua descrição..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} /><button onClick={enviarTextoPreparacao} disabled={textoPreparacao.length === 0} style={{ width: '100%', marginTop: '20px', padding: '20px', background: '#4ade80', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.2rem', opacity: textoPreparacao.length > 0 ? 1 : 0.5 }}>ENVIAR ARQUIVO</button></div></JanelaExterna>)}<div style={{ maxWidth: '900px', width: '100%', margin: '0 auto', textAlign: 'center' }}><h3 style={{ color: '#4ade80' }}>// FASE 0: PREPARAÇÃO DE DOCUMENTOS</h3>{!jaEnvieiPreparacao ? (<>{devoEsconder ? (<div style={{ border: '4px dashed #4ade80', padding: '50px', background: '#1c1917', color: '#4ade80', margin: '40px 0' }}><div style={{ fontSize: '50px' }}>🎥🔒</div><h2>MODO STREAMER ATIVO</h2><p>Os dados sensíveis estão ocultos nesta tela.</p>{!janelaExternaAberta ? (<button onClick={() => setJanelaExternaAberta(true)} style={{ padding: '20px 40px', fontSize: '18px', background: '#4ade80', color: '#000', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '20px', boxShadow: '0 0 20px rgba(74, 222, 128, 0.4)' }}>ABRIR PAINEL SEGRETO (POP-UP) ↗</button>) : (<div style={{ marginTop: '20px', padding: '20px', border: '1px solid #4ade80', color: '#fff' }}><p>O PAINEL SEGRETO ESTÁ ABERTO EM OUTRA JANELA.</p></div>)}</div>) : (<><div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace' }}>SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block' }}>{minhaPalavraInicial}</span></div><div style={paperStyle}><textarea rows="8" style={{ width: '100%', background: 'transparent', border: 'none', resize: 'none', outline: 'none', fontSize: '22px', fontFamily: "'Courier New', Courier, monospace", lineHeight: '1.5em', color: '#000000', fontWeight: 'bold' }} placeholder="Descreva a palavra sem dizê-la..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} /></div><button onClick={enviarTextoPreparacao} style={{ padding: '15px 40px', background: '#4ade80', color: 'black', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}>ARQUIVAR DOCUMENTO</button></>)}</>) : (<div style={{ marginTop: '50px' }}><h2>// DOCUMENTO ARQUIVADO //</h2><div style={{ fontSize: '60px', margin: '20px' }}>📁</div><p>Aguardando outros agentes... ({statusPreparacao.prontos}/{statusPreparacao.total})</p></div>)}</div></div>); }
   if (fase === 'SABOTAGEM') return commonRender(<div style={{ ...mainWrapper, background: '#44403c' }}><TimerDisplay/><RoleDisplay /><div style={{ padding: '20px', width: '100%' }}><HeaderDebug /></div><div style={{ textAlign: 'center' }}><h2>INTERCEPTAÇÃO DE DOCUMENTO</h2></div>{meuPapel === 'DECIFRADOR' && (<div style={{ marginTop: '50px', textAlign: 'center' }}><h1 style={{ color: '#fca5a5', fontSize: '3rem' }}>ACESSO NEGADO</h1><div style={{ fontSize: '100px', margin: '20px' }}>🚫</div><p>Você é o Decifrador desta rodada.</p></div>)}{meuPapel === 'CIFRADOR' && (<div style={{...paperStyle, transform: 'none', margin: '20px auto', maxWidth: '600px'}}><strong>SEU DOCUMENTO ESTÁ SENDO ATACADO:</strong><br/><br/>"{descricaoRecebida}"</div>)}{meuPapel === 'SABOTADOR' && (<div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', textAlign: 'center' }}><div style={{ background: '#1c1917', padding: '20px', border: '2px dashed #d97706', marginBottom: '30px' }}><p style={{ color: '#d97706', margin: 0 }}>PALAVRA-CHAVE:</p><h1 style={{ fontSize: '50px', color: '#fff', margin: '10px 0' }}>{dadosRodada?.palavra}</h1></div>{!sabotagemEnviada ? (<div style={{ background: '#292524', padding: '30px', borderRadius: '10px' }}><div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>{inputsSabotagem.map((valor, index) => (<input key={index} placeholder={`CENSURA #${index + 1}`} value={valor} onChange={(e) => atualizarInputSabotagem(index, e.target.value)} style={{ ...inputStyle, textTransform: 'uppercase' }} />))}</div><button onClick={enviarSabotagem} style={{ width: '100%', marginTop: '30px', padding: '20px', background: '#d97706', color: 'white', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}>EXECUTAR CENSURA</button></div>) : (<div style={{ background: '#14532d', padding: '30px', border: '2px solid #22c55e', color: '#fff' }}><h3>// CENSURA APLICADA //</h3></div>)}</div>)}</div>);
   if (fase === 'DECIFRANDO') return commonRender(<div style={{ ...mainWrapper, background: '#2c3e50' }}><TimerDisplay/><RoleDisplay /><div style={{ padding: '20px', width: '100%' }}><HeaderDebug /></div><div style={{ textAlign: 'center', color: 'white', marginBottom: '30px' }}><h2>DECODIFICAÇÃO</h2></div><div style={paperStyle}><div style={{ position: 'absolute', bottom: '20px', right: '20px', border: '4px solid black', color: 'black', padding: '5px 15px', transform: 'rotate(-10deg)', fontSize: '24px', fontWeight: 'bold', opacity: 0.4, pointerEvents: 'none' }}>CLASSIFIED</div>{textoCensurado.split(/(\[CENSURADO\])/g).map((parte, i) => (parte === '[CENSURADO]' ? <span key={i} style={{backgroundColor: '#111', color: 'transparent', padding: '2px 5px', margin: '0 2px'}}>████</span> : <span key={i}>{parte}</span>))}</div>{meuPapel === 'SABOTADOR' && (<div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '30px', padding: '20px', borderTop: '2px dashed #666', width: '100%', maxWidth: '800px' }}><p style={{ width: '100%', color: '#999', textAlign: 'center', margin: '0 0 10px 0', fontSize: '12px' }}>TENTATIVAS DE SABOTAGEM DA EQUIPE:</p>{palavrasSabotadasRodada.map((p, i) => (<div key={i} style={{ backgroundColor: '#fef08a', color: '#000', padding: '5px 15px', fontFamily: "'Courier New', Courier, monospace", transform: `rotate(${Math.random() * 10 - 5}deg)`, boxShadow: '2px 2px 5px rgba(0,0,0,0.3)', fontSize: '14px', fontWeight: 'bold' }}>{((souHost && configRecebida?.streamerMode) || modoStreamerLocal) ? '█████' : p}</div>))}</div>)}{meuPapel === 'DECIFRADOR' ? (<div style={{ maxWidth: '600px', width: '100%', margin: '0 auto', padding: '20px' }}><h3 style={{ color: 'white', textAlign: 'center' }}>QUAL É A PALAVRA-CHAVE?</h3><input style={inputStyle} placeholder="DIGITE SUA RESPOSTA..." value={tentativaDecifrador} onChange={(e) => setTentativaDecifrador(e.target.value)}/><button onClick={enviarDecifracao} style={{ width: '100%', marginTop: '20px', padding: '20px', background: '#2563eb', color: 'white', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 5px 0 #1e3a8a' }}>ENVIAR DECODIFICAÇÃO</button></div>) : (<div style={{ textAlign: 'center', color: 'white' }}><h3>// AGUARDANDO ANÁLISE DO DECIFRADOR //</h3></div>)}</div>);
   if (fase === 'RESULTADO' && resultadoRodada) return commonRender(<div style={{ ...mainWrapper, background: '#111', color: '#fff' }}><h1 style={{ textAlign: 'center', color: resultadoRodada.acertou ? '#4ade80' : '#f87171' }}>{resultadoRodada.acertou ? "DECIFRAÇÃO BEM SUCEDIDA!" : "FALHA NA DECIFRAÇÃO"}</h1><div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', background: '#222', padding: '30px', border: '2px solid #444' }}><p>A palavra era: <strong style={{ fontSize: '1.5em', color: '#fbbf24' }}>{resultadoRodada.palavraSecreta}</strong></p><p>O Decifrador chutou: <strong>{resultadoRodada.tentativa}</strong></p><hr style={{ borderColor: '#444', margin: '20px 0' }} /><h3>Relatório de Pontos:</h3><ul>{resultadoRodada.resumo.map((linha, i) => <li key={i} style={{ margin: '5px 0', fontSize: '18px' }}>{linha}</li>)}</ul></div>{souHost ? (<div style={{ textAlign: 'center', marginTop: '40px' }}><button onClick={proximaRodada} style={{ padding: '20px 50px', background: '#1d4ed8', color: 'white', fontSize: '24px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>PRÓXIMA RODADA ➡️</button></div>) : <p style={{ textAlign: 'center', marginTop: '40px' }}>Aguardando Host avançar...</p>}</div>);
   if (fase === 'FIM') return commonRender(<div style={{ ...mainWrapper, background: '#000', color: '#0f0' }}><h1 style={{ fontSize: '5rem', fontFamily: 'monospace' }}>MISSÃO CUMPRIDA</h1><h2>RANKING FINAL</h2><div style={{ border: '2px solid #0f0', padding: '20px', minWidth: '300px' }}>{jogadores.map((j, i) => (<div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '24px', margin: '10px 0' }}><span>{i+1}. {j.nome}</span><span>{j.pontos} PTS</span></div>))}</div><button onClick={() => window.location.reload()} style={{ padding: '20px', background: 'transparent', border: '2px solid #0f0', color: '#0f0', fontSize: '24px', cursor: 'pointer', marginTop: '50px' }}>NOVA MISSÃO</button></div>);
 
-  return <div>Carregando sistema...</div>;
+  // SE CAIR AQUI, MOSTRO O ERRO PARA VOCÊ DEBUGAR
+  return (
+      <div style={{...mainWrapper, color: '#f87171'}}>
+          <h1>⚠️ ERRO DE ESTADO ⚠️</h1>
+          <p>O sistema perdeu a fase. Tente resetar.</p>
+          <p>STATUS: Entrou = {entrou ? "SIM" : "NÃO"}</p>
+          <p>FASE ATUAL: "{fase}"</p>
+          <button onClick={() => { localStorage.removeItem('censorizador_session'); window.location.reload(); }} style={btnStyle}>
+              RESETAR SISTEMA (F5)
+          </button>
+      </div>
+  );
 }
 
 export default App;
