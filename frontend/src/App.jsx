@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import io from 'socket.io-client';
 import logoImage from './assets/logo.png'; 
 
+// 🟣 COLOQUE SEU CLIENT ID AQUI (Mantenha as aspas)
+const TWITCH_CLIENT_ID = 'SEU_CLIENT_ID_AQUI_ENTRE_AS_ASPAS'; 
+
 // URL DINÂMICA PARA DEPLOY
 const socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
 
@@ -113,8 +116,62 @@ function App() {
       }, 4000);
   };
 
+  // 🟣 LÓGICA DE LOGIN DA TWITCH (Com Avatar!)
+  const verificarLoginTwitch = async () => {
+      const hash = window.location.hash;
+      if (hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.replace('#', '?'));
+          const accessToken = params.get('access_token');
+          
+          window.history.replaceState({}, document.title, "/");
+
+          if (accessToken) {
+              try {
+                  const response = await fetch('https://api.twitch.tv/helix/users', {
+                      headers: {
+                          'Authorization': `Bearer ${accessToken}`,
+                          'Client-Id': TWITCH_CLIENT_ID
+                      }
+                  });
+                  const data = await response.json();
+                  
+                  if (data.data && data.data.length > 0) {
+                      const userTwitch = data.data[0];
+                      console.log("🟣 Logado como:", userTwitch.display_name);
+                      
+                      const savedConfig = localStorage.getItem('temp_create_room_config');
+                      if (savedConfig) {
+                          const configParsed = JSON.parse(savedConfig);
+                          localStorage.removeItem('temp_create_room_config');
+                          
+                          setNome(userTwitch.display_name);
+                          // 🔥 ENVIA A FOTO JUNTO
+                          socket.emit('criar_sala', { 
+                              nomeJogador: userTwitch.display_name, 
+                              senha: "", 
+                              config: configParsed,
+                              twitchData: { 
+                                  id: userTwitch.id, 
+                                  login: userTwitch.login, 
+                                  token: accessToken,
+                                  foto: userTwitch.profile_image_url 
+                              }
+                          });
+                      }
+                  }
+              } catch (error) {
+                  console.error("Erro ao validar Twitch:", error);
+                  setErroLogin("Falha na autenticação com a Twitch.");
+              }
+          }
+      }
+  };
+
   useEffect(() => {
+    verificarLoginTwitch();
+
     const saved = localStorage.getItem('censorizador_session');
+    
     if (saved) {
       const parsed = JSON.parse(saved);
       setSessaoSalva(parsed);
@@ -124,10 +181,11 @@ function App() {
     }
 
     socket.on('sala_criada_sucesso', (dados) => { 
-      const sessionData = { roomId: dados.roomId, token: dados.userToken, nome: nome, senha: senha }; 
+      const sessionData = { roomId: dados.roomId, token: dados.userToken, nome: dados.jogadores[0].nome, senha: senha }; 
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData)); 
       setSala(dados.roomId); setJogadores(dados.jogadores); setConfigRecebida(dados.config); 
       setEntrou(true); setErroLogin(""); 
+      setNome(dados.jogadores[0].nome);
     });
     
     socket.on('entrada_sucesso', (dados) => { 
@@ -138,27 +196,56 @@ function App() {
       setEntrou(true); setErroLogin(""); 
     });
 
-    socket.on('sessao_invalida', () => { localStorage.removeItem('censorizador_session'); setSessaoSalva(null); });
-    socket.on('banido_da_sala', (msg) => { localStorage.removeItem('censorizador_session'); alert("⛔ " + msg); window.location.reload(); });
-    socket.on('log_evento', (dados) => { adicionarLog(dados); });
+    socket.on('sessao_invalida', () => {
+        localStorage.removeItem('censorizador_session');
+        setSessaoSalva(null); 
+    });
+
+    socket.on('banido_da_sala', (msg) => {
+        localStorage.removeItem('censorizador_session');
+        alert("⛔ " + msg);
+        window.location.reload();
+    });
+
+    socket.on('log_evento', (dados) => {
+        adicionarLog(dados);
+    });
+    
     socket.on('erro_login', (msg) => { setErroLogin(msg); });
     socket.on('atualizar_sala', (lista) => { setJogadores(lista); const eu = lista.find(j => j.id === socket.id); if (eu) setSouHost(eu.isHost); });
-    socket.on('sala_encerrada', (motivo) => { localStorage.removeItem('censorizador_session'); alert(motivo); window.location.reload(); });
+    
+    socket.on('sala_encerrada', (motivo) => { 
+        localStorage.removeItem('censorizador_session'); 
+        alert(motivo); 
+        window.location.reload(); 
+    });
+    
     socket.on('aviso_sala', (dados) => { setAviso(dados); if (dados.tipo === 'sucesso') setTimeout(() => setAviso(null), 5000); });
     
     socket.on('inicio_preparacao', (dados) => { 
-        setFase('PREPARACAO'); setMinhaPalavraInicial(dados.palavra); setJaEnvieiPreparacao(false); 
-        setTextoPreparacao(""); setResultadoRodada(null); setJanelaExternaAberta(false); 
+        setFase('PREPARACAO'); 
+        setMinhaPalavraInicial(dados.palavra); 
+        setJaEnvieiPreparacao(false); 
+        setTextoPreparacao(""); 
+        setResultadoRodada(null); 
+        setJanelaExternaAberta(false); 
         setInputsSabotagem(Array(10).fill(""));
     });
     
     socket.on('status_preparacao', (dados) => { setStatusPreparacao(dados); });
     
     socket.on('nova_rodada', (dados) => { 
-        setFase('SABOTAGEM'); setMeuPapel(dados.meuPapel); setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
-        setInputsSabotagem(Array(10).fill("")); setSabotagemEnviada(false); setTentativaDecifrador(""); 
-        setDescricaoRecebida(dados.descricao || ""); setResultadoRodada(null); setJanelaExternaAberta(false); 
+        setFase('SABOTAGEM'); 
+        setMeuPapel(dados.meuPapel); 
+        setInfoRodada({ atual: dados.rodadaAtual, total: dados.totalRodadas }); 
+        setInputsSabotagem(Array(10).fill(""));
+        setSabotagemEnviada(false); 
+        setTentativaDecifrador(""); 
+        setDescricaoRecebida(dados.descricao || ""); 
+        setResultadoRodada(null); 
+        setJanelaExternaAberta(false); 
         setPalavrasSabotadasRodada([]); 
+        
         if(dados.protagonistas) setProtagonistas(dados.protagonistas);
         if (dados.palavraRevelada) setDadosRodada({ palavra: dados.palavraRevelada }); 
     });
@@ -179,14 +266,23 @@ function App() {
     });
     
     socket.on('resultado_rodada', (dados) => { 
-        setFase('RESULTADO'); setResultadoRodada(dados); setJogadores(dados.ranking); setAlvoLocal(0);
-        if (dados.acertou) { audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e)); } 
-        else { audioError.current?.play().catch(e => console.log("Áudio bloqueado", e)); }
+        setFase('RESULTADO'); 
+        setResultadoRodada(dados); 
+        setJogadores(dados.ranking); 
+        setAlvoLocal(0);
+
+        if (dados.acertou) {
+            audioSuccess.current?.play().catch(e => console.log("Áudio bloqueado", e));
+        } else {
+            audioError.current?.play().catch(e => console.log("Áudio bloqueado", e));
+        }
     });
     
     socket.on('fim_de_jogo', () => { setFase('FIM'); });
 
-    const handleClickFora = () => { if(menuBan.visivel) setMenuBan({...menuBan, visivel: false}); };
+    const handleClickFora = () => {
+        if(menuBan.visivel) setMenuBan({...menuBan, visivel: false});
+    };
     window.addEventListener('click', handleClickFora);
 
     return () => { 
@@ -198,43 +294,117 @@ function App() {
     };
   }, [nome, senha, menuBan]);
 
+  // LOOP DE TEMPO CORRIGIDO
   useEffect(() => {
       if (alvoLocal === 0) return;
+
       const interval = setInterval(() => {
           const agora = Date.now();
           const delta = Math.ceil((alvoLocal - agora) / 1000);
           setTempoRestante(delta > 0 ? delta : 0);
+          
           if (delta <= 0) setAlvoLocal(0);
       }, 200);
+
       return () => clearInterval(interval);
   }, [alvoLocal]);
 
+  // AUTO-ENVIO
   useEffect(() => {
       if (fase === 'PREPARACAO' && tempoRestante === 1 && !jaEnvieiPreparacao) {
-          if (textoPreparacao.length > 0) { enviarTextoPreparacao(); } 
-          else { socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); }
+          if (textoPreparacao.length > 0) {
+              enviarTextoPreparacao();
+          } else {
+              socket.emit('enviar_preparacao', { nomeSala: sala, texto: "O agente não conseguiu escrever a tempo." }); 
+              setJaEnvieiPreparacao(true);
+              setJanelaExternaAberta(false);
+          }
       }
   }, [tempoRestante, fase, jaEnvieiPreparacao, textoPreparacao]);
 
   const acaoReconectar = () => { if (sessaoSalva) { setNome(sessaoSalva.nome); setSala(sessaoSalva.roomId); setSenha(sessaoSalva.senha); socket.emit('entrar_sala', { nomeJogador: sessaoSalva.nome, roomId: sessaoSalva.roomId, senha: sessaoSalva.senha, token: sessaoSalva.token }); } };
-  const acaoCriarSala = () => { const senhaValida = configSala.twitchAuth ? true : (senha && senha.length > 0); if (nome && senhaValida) { socket.emit('criar_sala', { nomeJogador: nome, senha: senha, config: configSala }); } else { setErroLogin("Preencha nome e senha!"); } };
-  const acaoEntrarSala = () => { if (nome && sala && senha) { const token = sessaoSalva?.token; socket.emit('entrar_sala', { nomeJogador: nome, roomId: sala, senha: senha, token }); } else { setErroLogin("Preencha todos os campos!"); } };
+  
+  const acaoCriarSala = () => { 
+      if (configSala.twitchAuth) {
+          if (TWITCH_CLIENT_ID === 'SEU_CLIENT_ID_AQUI_ENTRE_AS_ASPAS') {
+              alert("ERRO DE CONFIG: Você precisa colocar o Client ID da Twitch no código!");
+              return;
+          }
+          localStorage.setItem('temp_create_room_config', JSON.stringify(configSala));
+          
+          const redirectUri = window.location.origin;
+          const scope = "user:read:email";
+          const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}`;
+          
+          window.location.href = authUrl;
+      } else {
+          if (nome && (senha && senha.length > 0)) { 
+              socket.emit('criar_sala', { nomeJogador: nome, senha: senha, config: configSala }); 
+          } else { 
+              setErroLogin("Preencha nome e senha!"); 
+          } 
+      }
+  };
+  
+  const acaoEntrarSala = () => { 
+      if (nome && sala && senha) { 
+          const token = sessaoSalva?.token; 
+          socket.emit('entrar_sala', { nomeJogador: nome, roomId: sala, senha: senha, token }); 
+      } else { setErroLogin("Preencha todos os campos!"); } 
+  };
+
   const iniciarJogo = () => { socket.emit('iniciar_jogo', sala); };
   const proximaRodada = () => { socket.emit('proxima_rodada', sala); };
-  const enviarTextoPreparacao = () => { socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); setJaEnvieiPreparacao(true); setJanelaExternaAberta(false); };
+  const enviarTextoPreparacao = () => { 
+      socket.emit('enviar_preparacao', { nomeSala: sala, texto: textoPreparacao }); 
+      setJaEnvieiPreparacao(true); 
+      setJanelaExternaAberta(false); 
+  };
   const enviarSabotagem = () => { const palavrasValidas = inputsSabotagem.filter(p => p.trim() !== ""); socket.emit('sabotador_envia', { nomeSala: sala, previsoes: palavrasValidas }); setSabotagemEnviada(true); };
   const atualizarInputSabotagem = (index, valor) => { const novosInputs = [...inputsSabotagem]; novosInputs[index] = valor; setInputsSabotagem(novosInputs); };
   const enviarDecifracao = () => { socket.emit('decifrador_chuta', { nomeSala: sala, tentativa: tentativaDecifrador }); };
-  const sairDaSala = () => { if (confirm("Tem certeza que deseja abandonar a missão?")) { localStorage.removeItem('censorizador_session'); socket.disconnect(); window.location.reload(); } };
-  const handleContextMenuJogador = (e, jogador) => { if(!souHost) return; if(jogador.id === socket.id) return; e.preventDefault(); setMenuBan({ visivel: true, x: e.clientX, y: e.clientY, jogadorId: jogador.id, jogadorNome: jogador.nome }); };
-  const confirmarBan = () => { if(menuBan.jogadorId) { socket.emit('banir_jogador', { roomId: sala, targetId: menuBan.jogadorId }); } setMenuBan({ ...menuBan, visivel: false }); };
+
+  const sairDaSala = () => {
+    if (confirm("Tem certeza que deseja abandonar a missão?")) {
+        localStorage.removeItem('censorizador_session');
+        socket.disconnect();
+        window.location.reload();
+    }
+  };
+
+  const handleContextMenuJogador = (e, jogador) => {
+      if(!souHost) return;
+      if(jogador.id === socket.id) return; 
+
+      e.preventDefault(); 
+      setMenuBan({
+          visivel: true,
+          x: e.clientX,
+          y: e.clientY,
+          jogadorId: jogador.id,
+          jogadorNome: jogador.nome
+      });
+  };
+
+  const confirmarBan = () => {
+      if(menuBan.jogadorId) {
+          socket.emit('banir_jogador', { roomId: sala, targetId: menuBan.jogadorId });
+      }
+      setMenuBan({ ...menuBan, visivel: false });
+  };
 
   // --- ESTILOS & COMPONENTES ---
   const mainWrapper = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width: '100%', fontFamily: "'Courier New', Courier, monospace", color: '#e5e5e5', boxSizing: 'border-box', padding: '20px' };
   const inputStyle = { padding: '15px', margin: '10px 0', fontSize: '18px', color: '#1a1a1a', backgroundColor: '#f8f8f8', border: '2px solid #333', width: '100%', fontFamily: "'Courier New', Courier, monospace", fontWeight: 'bold', boxSizing: 'border-box' };
   const btnStyle = { padding: '20px', background: '#333', color: 'white', border: 'none', marginTop: '10px', fontSize: '1.2rem', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', width: '100%', textTransform: 'uppercase' };
   const paperStyle = { backgroundColor: '#f4e4bc', backgroundImage: 'linear-gradient(#e8dcb5 1px, transparent 1px)', backgroundSize: '100% 1.5em', color: '#1a1a1a', padding: '40px', boxShadow: '5px 5px 15px rgba(0,0,0,0.5)', maxWidth: '800px', width: '100%', margin: '30px auto', border: '1px solid #cfb997', fontSize: '22px', lineHeight: '1.5em', textAlign: 'left', position: 'relative', transform: 'rotate(-1deg)' };
-  const agentCardStyle = { backgroundColor: '#fff', color: '#333', padding: '20px 15px', width: '180px', height: '240px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', fontFamily: "'Courier New', Courier, monospace", transition: 'transform 0.2s', border: '1px solid #ccc' };
+  
+  const agentCardStyle = { 
+      backgroundColor: '#fff', color: '#333', padding: '20px 15px', width: '180px', height: '240px', 
+      boxShadow: '0 4px 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', 
+      position: 'relative', fontFamily: "'Courier New', Courier, monospace", transition: 'transform 0.2s', border: '1px solid #ccc' 
+  };
+
   const stickyNoteStyle = { backgroundColor: '#fef3c7', color: '#333', padding: '15px 30px', display: 'inline-block', transform: 'rotate(2deg)', boxShadow: '3px 3px 8px rgba(0,0,0,0.4)', marginTop: '20px', fontFamily: "'Courier New', Courier, monospace'", textAlign: 'center', border: '1px solid #eab308' };
   const stampStyle = { border: '3px solid', padding: '5px 10px', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '14px', transform: 'rotate(-10deg)', opacity: 0.9, marginTop: 'auto', letterSpacing: '1px', textAlign: 'center', fontFamily: 'sans-serif' };
   const rulesBtnStyle = { position: 'fixed', bottom: '20px', right: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#d97706', color: '#fff', fontSize: '30px', fontWeight: 'bold', border: '3px solid #fff', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
@@ -253,9 +423,18 @@ function App() {
     <>
       <button onClick={() => setExibirRegras(!exibirRegras)} style={rulesBtnStyle} title="Protocolos da Missão">?</button>
       <div style={rulesBoxStyle}>
-        <div style={{ borderBottom: '2px dashed #1c1917', paddingBottom: '10px', marginBottom: '10px' }}><h3 style={{ margin: 0, textTransform: 'uppercase' }}>📂 Protocolos</h3></div>
-        <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '14px', lineHeight: '1.4em' }}><li style={{ marginBottom: '8px' }}><strong>1. O SEGREDO:</strong> Cada um recebe uma palavra secreta.</li><li style={{ marginBottom: '8px' }}><strong>2. 🕵️ CIFRADOR:</strong> Escreve um texto para descrever sua palavra (sem usar a palavra!).</li><li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras do texto para atrapalhar.</li><li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar qual era a palavra original.</li></ul>
-        <div style={{ marginTop: '10px', fontSize: '12px', fontStyle: 'italic', textAlign: 'center', color: '#b91c1c' }}>"Confie em ninguém."</div>
+        <div style={{ borderBottom: '2px dashed #1c1917', paddingBottom: '10px', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0, textTransform: 'uppercase' }}>📂 Protocolos</h3>
+        </div>
+        <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '14px', lineHeight: '1.4em' }}>
+            <li style={{ marginBottom: '8px' }}><strong>1. O SEGREDO:</strong> Cada um recebe uma palavra secreta.</li>
+            <li style={{ marginBottom: '8px' }}><strong>2. 🕵️ CIFRADOR:</strong> Escreve um texto para descrever sua palavra (sem usar a palavra!).</li>
+            <li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras do texto para atrapalhar.</li>
+            <li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar qual era a palavra original.</li>
+        </ul>
+        <div style={{ marginTop: '10px', fontSize: '12px', fontStyle: 'italic', textAlign: 'center', color: '#b91c1c' }}>
+            "Confie em ninguém."
+        </div>
       </div>
     </>
   );
@@ -263,13 +442,20 @@ function App() {
   const SidebarJogadores = () => (
       <div style={{ position: 'fixed', top: '50%', left: '20px', transform: 'translateY(-50%)', width: '80px', background: '#1c1917', border: '2px solid #333', padding: '10px 5px', borderRadius: '10px', zIndex: 500, boxShadow: '0 0 10px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
           <div style={{ fontSize: '10px', color: '#666', fontWeight: 'bold', textAlign: 'center', borderBottom: '1px solid #333', width: '100%', paddingBottom: '5px' }}>AGENTS</div>
-          {jogadores.map(j => (<div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : j.nome} style={{ width: '50px', height: '50px', background: j.id === socket.id ? '#d97706' : '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: j.isHost ? '3px solid #b91c1c' : '2px solid #333', fontSize: '24px', cursor: souHost ? 'context-menu' : 'default', position: 'relative' }}>🕵️‍♂️ <span style={{ position: 'absolute', bottom: '-15px', fontSize: '10px', color: '#fff', background: '#000', padding: '0 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{j.nome.substring(0,6)}</span></div>))}
+          {jogadores.map(j => (
+              <div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : j.nome} style={{ width: '50px', height: '50px', background: j.id === socket.id ? '#d97706' : '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: j.isHost ? '3px solid #b91c1c' : '2px solid #333', fontSize: '24px', cursor: souHost ? 'context-menu' : 'default', position: 'relative', overflow: 'hidden' }}>
+                  {j.foto ? <img src={j.foto} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <span>🕵️‍♂️</span>}
+                  <span style={{ position: 'absolute', bottom: '-15px', fontSize: '10px', color: '#fff', background: '#000', padding: '0 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{j.nome.substring(0,6)}</span>
+              </div>
+          ))}
       </div>
   );
 
   const SystemLogs = () => (
       <div style={{ position: 'fixed', bottom: '20px', left: '20px', display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 9999, pointerEvents: 'none' }}>
-          {logsSistema.map(log => (<div key={log.id} style={{ backgroundColor: 'rgba(0,0,0,0.8)', borderLeft: `4px solid ${log.tipo === 'ban' ? '#ef4444' : (log.tipo === 'entrada' ? '#22c55e' : '#eab308')}`, color: '#fff', padding: '10px 15px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px', boxShadow: '2px 2px 5px rgba(0,0,0,0.5)', animation: 'fadeIn 0.3s ease-out' }}>{log.msg}</div>))}
+          {logsSistema.map(log => (
+              <div key={log.id} style={{ backgroundColor: 'rgba(0,0,0,0.8)', borderLeft: `4px solid ${log.tipo === 'ban' ? '#ef4444' : (log.tipo === 'entrada' ? '#22c55e' : '#eab308')}`, color: '#fff', padding: '10px 15px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px', boxShadow: '2px 2px 5px rgba(0,0,0,0.5)', animation: 'fadeIn 0.3s ease-out' }}>{log.msg}</div>
+          ))}
           <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }`}</style>
       </div>
   );
@@ -292,6 +478,7 @@ function App() {
         <SystemLogs />
         {entrou && (<button onClick={sairDaSala} style={exitBtnStyle}>ABANDONAR</button>)}
         {entrou && (<button onClick={() => setModoStreamerLocal(!modoStreamerLocal)} style={streamerBtnStyle} title="Modo Streamer (Ocultar Segredos)">{modoStreamerLocal ? '🙈' : '👁️'}</button>)}
+        
         {menuBan.visivel && (<div style={menuBanStyle} onClick={confirmarBan}>🔨 BANIR AGENTE <br/> <span style={{color: 'white'}}>{menuBan.jogadorNome}</span></div>)}
         {entrou && fase !== 'LOBBY' && fase !== 'FIM' && <SidebarJogadores />}
         {content}
@@ -309,11 +496,16 @@ function App() {
           {modoLogin === 'CRIAR' && (
             <div style={{ marginTop: '20px' }}>
               <h3 style={{textAlign: 'center'}}>// CONFIGURAÇÃO DA MISSÃO //</h3>
-              <input placeholder="CODINOME (Seu Nome)" onChange={e => setNome(e.target.value)} style={inputStyle} />
+              <input placeholder="CODINOME (Seu Nome)" onChange={e => setNome(e.target.value)} style={inputStyle} disabled={configSala.twitchAuth} value={configSala.twitchAuth ? "(Login via Twitch)" : nome} />
+              
               <input placeholder={configSala.twitchAuth ? "🔒 AUTENTICAÇÃO TWITCH ATIVA" : "DEFINIR SENHA DE ACESSO"} type="text" disabled={configSala.twitchAuth} onChange={e => setSenha(e.target.value)} value={configSala.twitchAuth ? "" : senha} style={{ ...inputStyle, opacity: configSala.twitchAuth ? 0.6 : 1, cursor: configSala.twitchAuth ? 'not-allowed' : 'text' }} />
+              
               <div style={{ background: '#e8dcb5', padding: '15px', border: '2px solid #333', margin: '10px 0', textAlign: 'left' }}>
                   <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #333' }}>⚙️ AJUSTES DO SISTEMA</h4>
-                  <label style={{ display: 'flex', alignItems: 'center', margin: '5px 0', cursor: 'pointer', color: '#000', fontWeight: 'bold' }}><input type="checkbox" checked={configSala.twitchAuth} onChange={e => setConfigSala({...configSala, twitchAuth: e.target.checked})} style={{ marginRight: '10px' }} />Exigir Autenticação Twitch (Substitui Senha)</label>
+                  <label style={{ display: 'flex', alignItems: 'center', margin: '5px 0', cursor: 'pointer', color: '#000', fontWeight: 'bold' }}>
+                      <input type="checkbox" checked={configSala.twitchAuth} onChange={e => setConfigSala({...configSala, twitchAuth: e.target.checked})} style={{ marginRight: '10px' }} />
+                      <span style={{ color: '#9146FF' }}>👾 Exigir Autenticação Twitch (Host Login)</span>
+                  </label>
                   <label style={{ display: 'flex', alignItems: 'center', margin: '5px 0', cursor: 'pointer', color: '#000', fontWeight: 'bold' }}><input type="checkbox" checked={configSala.streamerMode} onChange={e => setConfigSala({...configSala, streamerMode: e.target.checked})} style={{ marginRight: '10px' }} />Modo Streamer (Janela Segura)</label>
                   <div style={{ margin: '10px 0' }}><label style={{ fontSize: '14px', fontWeight: 'bold' }}>CICLOS DE RODADAS (Voltas na mesa):</label><div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}><input type="range" min="1" max="5" value={configSala.numCiclos} onChange={e => setConfigSala({...configSala, numCiclos: parseInt(e.target.value)})} style={{ flex: 1, cursor: 'pointer' }} /><span style={{ fontWeight: 'bold', fontSize: '18px', width: '30px' }}>{configSala.numCiclos}</span></div></div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
@@ -323,7 +515,9 @@ function App() {
                   </div>
               </div>
               {erroLogin && <p style={{color: '#b91c1c', fontWeight: 'bold', textAlign: 'center'}}>{erroLogin}</p>}
-              <button onClick={acaoCriarSala} style={{ ...btnStyle, background: '#b91c1c' }}>CRIAR SALA</button>
+              <button onClick={acaoCriarSala} style={{ ...btnStyle, background: configSala.twitchAuth ? '#9146FF' : '#b91c1c' }}>
+                  {configSala.twitchAuth ? "LOGAR COM TWITCH & CRIAR" : "CRIAR SALA"}
+              </button>
               <button onClick={() => {setModoLogin('MENU'); setErroLogin('');}} style={{ ...btnStyle, background: 'transparent', color: '#333', border: '2px solid #333' }}>CANCELAR</button>
             </div>
           )}
@@ -341,10 +535,25 @@ function App() {
           <img src={logoImage} alt="Confidencial Logo" style={{ width: '100%', maxWidth: '400px', border: '3px solid #d97706', boxSizing: 'border-box', boxShadow: '5px 5px 0 rgba(0,0,0,0.3)', marginBottom: '20px' }} />
           <p style={{ letterSpacing: '3px', marginTop: '10px', fontSize: '1rem', color: '#d97706', fontWeight: 'bold' }}>// AGENTES ATIVOS NA REDE //</p>
           <div style={stickyNoteStyle}><span style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>CÓDIGO DA MISSÃO:</span><strong style={{ fontSize: '2.5rem', letterSpacing: '3px' }}>{sala}</strong></div>
-          {configRecebida && (<div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>{configRecebida.twitchAuth && <span title="Autenticação Twitch Obrigatória" style={{ fontSize: '24px', cursor: 'help' }}>👾</span>}{configRecebida.streamerMode && <span title="Modo Streamer Ativo" style={{ fontSize: '24px', cursor: 'help' }}>🎥</span>}<span title={`Ciclos de Rodadas: ${configRecebida.numCiclos}`} style={{ fontSize: '24px', cursor: 'help' }}>🔄 {configRecebida.numCiclos}</span></div>)}
+          {configRecebida && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
+                  {configRecebida.twitchAuth && <span title="Autenticação Twitch Obrigatória" style={{ fontSize: '24px', cursor: 'help' }}>👾</span>}
+                  {configRecebida.streamerMode && <span title="Modo Streamer Ativo" style={{ fontSize: '24px', cursor: 'help' }}>🎥</span>}
+                  <span title={`Ciclos de Rodadas: ${configRecebida.numCiclos}`} style={{ fontSize: '24px', cursor: 'help' }}>🔄 {configRecebida.numCiclos}</span>
+              </div>
+          )}
         </div>
         <div style={{ width: '90%', height: '4px', background: '#d97706', margin: '10px 0 40px 0', borderRadius: '2px' }}></div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', justifyContent: 'center', width: '100%', maxWidth: '1000px' }}>{jogadores.map((j, i) => (<div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : ""} style={{ ...agentCardStyle, transform: `rotate(${i % 2 === 0 ? '2deg' : '-2deg'})`, cursor: souHost ? 'context-menu' : 'default' }}><div style={{ width: '70px', height: '70px', background: '#e2e8f0', borderRadius: '50%', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #333' }}><span style={{ fontSize: '35px' }}>🕵️‍♂️</span></div><div style={{ fontSize: '1.3rem', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '2px solid #333', width: '100%', textAlign: 'center', paddingBottom: '5px', marginBottom: '5px' }}>{j.nome}</div><div style={{ fontSize: '0.9rem', color: '#666', fontFamily: 'sans-serif' }}>SCORE: {j.pontos}</div><div style={{ marginTop: 'auto', marginBottom: '10px' }}>{j.isHost ? (<div style={{ ...stampStyle, borderColor: '#b91c1c', color: '#b91c1c' }}>MISSION DIRECTOR</div>) : (<div style={{ ...stampStyle, borderColor: '#15803d', color: '#15803d', transform: 'rotate(-5deg)' }}>FIELD AGENT</div>)}</div></div>))}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', justifyContent: 'center', width: '100%', maxWidth: '1000px' }}>{jogadores.map((j, i) => (
+            <div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost && j.id !== socket.id ? "Botão Direito para BANIR" : ""} style={{ ...agentCardStyle, transform: `rotate(${i % 2 === 0 ? '2deg' : '-2deg'})`, cursor: souHost ? 'context-menu' : 'default' }}>
+                <div style={{ width: '70px', height: '70px', background: '#e2e8f0', borderRadius: '50%', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #333', overflow: 'hidden' }}>
+                    {j.foto ? <img src={j.foto} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <span style={{fontSize: '35px'}}>🕵️‍♂️</span>}
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', textTransform: 'uppercase', borderBottom: '2px solid #333', width: '100%', textAlign: 'center', paddingBottom: '5px', marginBottom: '5px' }}>{j.nome}</div>
+                <div style={{ fontSize: '0.9rem', color: '#666', fontFamily: 'sans-serif' }}>SCORE: {j.pontos}</div>
+                <div style={{ marginTop: 'auto', marginBottom: '10px' }}>{j.isHost ? (<div style={{ ...stampStyle, borderColor: '#b91c1c', color: '#b91c1c' }}>MISSION DIRECTOR</div>) : (<div style={{ ...stampStyle, borderColor: '#15803d', color: '#15803d', transform: 'rotate(-5deg)' }}>FIELD AGENT</div>)}</div>
+            </div>
+        ))}</div>
         <div style={{ marginTop: 'auto', marginBottom: '40px', width: '100%', textAlign: 'center' }}>{souHost ? (<div style={{ display: 'inline-block' }}>{jogadores.length >= 3 ? (<button onClick={iniciarJogo} style={{ padding: '25px 60px', fontSize: '24px', background: 'transparent', color: '#f4e4bc', border: '4px solid #f4e4bc', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', boxShadow: '0 0 15px rgba(244, 228, 188, 0.3)' }}>⚠ EXECUTAR PROTOCOLO ⚠</button>) : (<div style={{ color: '#fbbf24', border: '2px dashed #fbbf24', padding: '20px 40px', display: 'inline-block', fontSize: '1.2rem', letterSpacing: '1px' }}>// AGUARDANDO EQUIPE COMPLETA (MÍN. 3) //</div>)}</div>) : (<div style={{ color: '#fbbf24', border: '2px dashed #fbbf24', padding: '15px 30px', display: 'inline-block', fontSize: '1.2rem', letterSpacing: '1px' }}>// AGUARDANDO COMANDANTE INICIAR //</div>)}</div>
       </div>
     );
@@ -355,22 +564,61 @@ function App() {
       return commonRender(
         <div style={mainWrapper}>
             <TimerDisplay/>
-            {janelaExternaAberta && (<JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '30px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#e5e5e5', fontFamily: "'Courier New', Courier, monospace" }}><h2 style={{ color: '#4ade80', textTransform: 'uppercase', borderBottom: '2px solid #4ade80' }}>📂 DOSSIÊ SECRETO</h2><div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace', width: '100%', boxSizing: 'border-box' }}>SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block', wordBreak: 'break-all' }}>{minhaPalavraInicial}</span></div><textarea rows="8" autoFocus style={{ width: '100%', background: '#111', color: '#4ade80', border: '2px solid #4ade80', padding: '10px', fontSize: '18px', fontFamily: 'monospace', resize: 'none' }} placeholder="Digite aqui sua descrição..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} /><button onClick={enviarTextoPreparacao} disabled={textoPreparacao.length === 0} style={{ width: '100%', marginTop: '20px', padding: '20px', background: '#4ade80', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.2rem', opacity: textoPreparacao.length > 0 ? 1 : 0.5 }}>ENVIAR ARQUIVO</button></div></JanelaExterna>)}
+            {janelaExternaAberta && (
+                <JanelaExterna onClose={() => setJanelaExternaAberta(false)}>
+                    <div style={{ padding: '30px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#e5e5e5', fontFamily: "'Courier New', Courier, monospace" }}>
+                        <h2 style={{ color: '#4ade80', textTransform: 'uppercase', borderBottom: '2px solid #4ade80' }}>📂 DOSSIÊ SECRETO</h2>
+                        <div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace', width: '100%', boxSizing: 'border-box' }}>
+                            SUA PALAVRA SECRETA: 
+                            <span style={{ color: '#4ade80', fontSize: '40px', display: 'block', wordBreak: 'break-all' }}>{minhaPalavraInicial}</span>
+                        </div>
+                        <textarea 
+                            rows="8" autoFocus
+                            style={{ width: '100%', background: '#111', color: '#4ade80', border: '2px solid #4ade80', padding: '10px', fontSize: '18px', fontFamily: 'monospace', resize: 'none' }} 
+                            placeholder="Digite aqui sua descrição..." 
+                            value={textoPreparacao}
+                            onChange={(e) => setTextoPreparacao(e.target.value)}
+                        />
+                        <button onClick={enviarTextoPreparacao} disabled={textoPreparacao.length === 0} style={{ width: '100%', marginTop: '20px', padding: '20px', background: '#4ade80', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.2rem', opacity: textoPreparacao.length > 0 ? 1 : 0.5 }}>
+                            ENVIAR ARQUIVO
+                        </button>
+                    </div>
+                </JanelaExterna>
+            )}
+
             <div style={{ maxWidth: '900px', width: '100%', margin: '0 auto', textAlign: 'center' }}>
                 <h3 style={{ color: '#4ade80' }}>// FASE 0: PREPARAÇÃO DE DOCUMENTOS</h3>
+                
                 {!jaEnvieiPreparacao ? (
                     <>
                     {devoEsconder ? (
-                        <div style={{ border: '4px dashed #4ade80', padding: '50px', background: '#1c1917', color: '#4ade80', margin: '40px 0' }}><div style={{ fontSize: '50px' }}>🎥🔒</div><h2>MODO STREAMER ATIVO</h2><p>Os dados sensíveis estão ocultos nesta tela.</p>{!janelaExternaAberta ? (<button onClick={() => setJanelaExternaAberta(true)} style={{ padding: '20px 40px', fontSize: '18px', background: '#4ade80', color: '#000', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '20px', boxShadow: '0 0 20px rgba(74, 222, 128, 0.4)' }}>ABRIR PAINEL SEGRETO (POP-UP) ↗</button>) : (<div style={{ marginTop: '20px', padding: '20px', border: '1px solid #4ade80', color: '#fff' }}><p>O PAINEL SEGRETO ESTÁ ABERTO EM OUTRA JANELA.</p></div>)}</div>
+                        <div style={{ border: '4px dashed #4ade80', padding: '50px', background: '#1c1917', color: '#4ade80', margin: '40px 0' }}>
+                            <div style={{ fontSize: '50px' }}>🎥🔒</div>
+                            <h2>MODO STREAMER ATIVO</h2>
+                            <p>Os dados sensíveis estão ocultos nesta tela.</p>
+                            {!janelaExternaAberta ? (
+                                <button onClick={() => setJanelaExternaAberta(true)} style={{ padding: '20px 40px', fontSize: '18px', background: '#4ade80', color: '#000', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '20px', boxShadow: '0 0 20px rgba(74, 222, 128, 0.4)' }}>
+                                    ABRIR PAINEL SEGRETO (POP-UP) ↗
+                                </button>
+                            ) : (
+                                <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #4ade80', color: '#fff' }}><p>O PAINEL SEGRETO ESTÁ ABERTO EM OUTRA JANELA.</p></div>
+                            )}
+                        </div>
                     ) : (
                         <>
-                            <div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace' }}>SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block' }}>{minhaPalavraInicial}</span></div>
-                            <div style={paperStyle}><textarea rows="8" style={{ width: '100%', background: 'transparent', border: 'none', resize: 'none', outline: 'none', fontSize: '22px', fontFamily: "'Courier New', Courier, monospace", lineHeight: '1.5em', color: '#000000', fontWeight: 'bold' }} placeholder="Descreva a palavra sem dizê-la..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} /></div>
+                            <div style={{ background: '#000', padding: '20px', border: '1px solid #4ade80', margin: '20px 0', fontFamily: 'monospace' }}>
+                                SUA PALAVRA SECRETA: <span style={{ color: '#4ade80', fontSize: '40px', display: 'block' }}>{minhaPalavraInicial}</span>
+                            </div>
+                            <div style={paperStyle}>
+                                <textarea rows="8" style={{ width: '100%', background: 'transparent', border: 'none', resize: 'none', outline: 'none', fontSize: '22px', fontFamily: "'Courier New', Courier, monospace", lineHeight: '1.5em', color: '#000000', fontWeight: 'bold' }} placeholder="Descreva a palavra sem dizê-la..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} />
+                            </div>
                             <button onClick={enviarTextoPreparacao} style={{ padding: '15px 40px', background: '#4ade80', color: 'black', border: 'none', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' }}>ARQUIVAR DOCUMENTO</button>
                         </>
                     )}
                     </>
-                ) : (<div style={{ marginTop: '50px' }}><h2>// DOCUMENTO ARQUIVADO //</h2><div style={{ fontSize: '60px', margin: '20px' }}>📁</div><p>Aguardando outros agentes... ({statusPreparacao.prontos}/{statusPreparacao.total})</p></div>)}
+                ) : (
+                    <div style={{ marginTop: '50px' }}><h2>// DOCUMENTO ARQUIVADO //</h2><div style={{ fontSize: '60px', margin: '20px' }}>📁</div><p>Aguardando outros agentes... ({statusPreparacao.prontos}/{statusPreparacao.total})</p></div>
+                )}
             </div>
         </div>
       );

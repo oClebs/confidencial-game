@@ -40,12 +40,9 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
-// 🔥 NOVO: Gera Regex que ignora acentos e cedilha
+// Regex que ignora acentos e cedilha
 function gerarRegexFlexivel(texto) {
-    // Escapa caracteres especiais de regex primeiro
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // Remove acentos da entrada para ter a base
     const base = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     
     const mapa = {
@@ -57,9 +54,7 @@ function gerarRegexFlexivel(texto) {
     for (let char of base) {
         pattern += mapa[char] || escapeRegex(char);
     }
-    
-    // Adiciona suporte opcional a plural simples (s ou es) no final
-    pattern += "(es|s)?";
+    pattern += "(es|s)?"; // Plural opcional
 
     return new RegExp(pattern, 'gi');
 }
@@ -94,7 +89,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('criar_sala', ({ nomeJogador, senha, config }) => {
+  // 🔥 ATUALIZADO: Recebe twitchData e salva a foto
+  socket.on('criar_sala', ({ nomeJogador, senha, config, twitchData }) => {
     const novoId = gerarIdSala();
     const tokenSeguro = gerarTokenSeguro(); 
     
@@ -135,7 +131,8 @@ io.on('connection', (socket) => {
       isHost: true,
       minhaPalavra: null,
       meuTexto: null,
-      pronto: false
+      pronto: false,
+      foto: twitchData ? twitchData.foto : null // <--- SALVA A FOTO AQUI
     });
 
     socket.emit('sala_criada_sucesso', { 
@@ -199,7 +196,8 @@ io.on('connection', (socket) => {
       isHost: isReturningHost || (sala.jogadores.length === 0 && token === sala.hostToken), 
       minhaPalavra: null,
       meuTexto: null,
-      pronto: false
+      pronto: false,
+      foto: null // Padrão sem foto para convidados (por enquanto)
     };
 
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
@@ -362,7 +360,6 @@ io.on('connection', (socket) => {
     let textoBase = cifradorDaVez.meuTexto || "TEXTO PERDIDO"; 
     const palavraProibida = cifradorDaVez.minhaPalavra || "???"; 
     
-    // Auto-censura inteligente na rodada inicial
     const regexAuto = gerarRegexFlexivel(palavraProibida);
     if (regexAuto.test(textoBase)) { textoBase = textoBase.replace(regexAuto, '[CENSURADO]'); }
     
@@ -406,7 +403,6 @@ io.on('connection', (socket) => {
     if (totalEnviados >= totalSabotadores) { if (sala.timer) clearTimeout(sala.timer); finalizeFaseSabotagem(nomeSala); }
   });
 
-  // 🔥 AJUSTADO: Usa gerarRegexFlexivel e envia tempo junto
   function finalizeFaseSabotagem(nomeSala) {
     const sala = salas[nomeSala]; if (!sala) return;
     let textoCensurado = sala.dadosRodada.descricao; 
@@ -422,14 +418,12 @@ io.on('connection', (socket) => {
     sala.fase = 'DECIFRANDO'; 
     sala.dadosRodada.textoCensurado = textoCensurado;
     
-    // Inicia timer PRIMEIRO para definir timestamp
     iniciarTimer(nomeSala, sala.config.tempos.decifracao, () => { calcularPontuacaoEFinalizarRodada(nomeSala, null); });
     
-    // Envia tudo junto: texto E o tempo restante para forçar sync
     io.to(nomeSala).emit('fase_decifrar', { 
         textoCensurado: textoCensurado, 
         palavrasEfetivas: palavrasEfetivas,
-        segundosRestantes: sala.config.tempos.decifracao // 🔥 Correção do bug do timer 0
+        segundosRestantes: sala.config.tempos.decifracao 
     });
   }
 
@@ -438,7 +432,6 @@ io.on('connection', (socket) => {
   function calcularPontuacaoEFinalizarRodada(nomeSala, tentativa) {
     const sala = salas[nomeSala]; if (!sala) return;
     
-    // Normalização para comparar resposta
     const palavraSecretaNorm = sala.dadosRodada.palavra.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     const tentativaNorm = (tentativa || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     
@@ -461,7 +454,6 @@ io.on('connection', (socket) => {
             const palavraLimpa = p.trim();
             if (!palavraLimpa) return;
 
-            // Regex flexível para pontuar também
             const regex = gerarRegexFlexivel(palavraLimpa);
 
             if (regex.test(textoOriginal)) { 
