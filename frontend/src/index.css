@@ -1,3 +1,10 @@
+/* --- TAILWIND CARREGA PRIMEIRO --- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- SEU ESTILO PERSONALIZADO VEM ABAIXO --- */
+
 /* RESET GLOBAL PARA TELA CHEIA */
 :root {
   font-family: 'Courier New', Courier, monospace;

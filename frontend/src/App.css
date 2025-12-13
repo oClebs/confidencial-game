@@ -169,8 +169,8 @@ body, html {
   margin: 10px;
   border: 1px solid #333;
   display: flex;
-  flex-direction: column; /* Corrigido */
-  align-items: center;    /* Corrigido */
+  flex-direction: column;
+  align-items: center;
   font-size: 12px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   border-radius: 8px;
@@ -207,8 +207,8 @@ body, html {
   background-color: var(--paper-bg);
   border-radius: 5px 5px 0 0;
   display: flex;
-  align-items: center; /* Corrigido */
-  padding-left: 15px;  /* Corrigido */
+  align-items: center;
+  padding-left: 15px;
   font-size: 10px;
   font-weight: bold;
   color: #666;
@@ -238,7 +238,7 @@ body, html {
   position: absolute; top: 0; left: 0; width: 100%;
   display: flex; justify-content: space-between;
   padding: 15px 30px;
-  box-sizing: border-box; /* Corrigido */
+  box-sizing: border-box;
   border-bottom: 1px solid rgba(255,255,255,0.1);
   background: rgba(0,0,0,0.3);
   z-index: 20;
@@ -267,19 +267,19 @@ body, html {
 }
 .rules-box.visible { transform: scale(1); }
 
-/* --- SIDEBAR CORRIGIDA --- */
+/* --- SIDEBAR --- */
 .sidebar-container {
   position: fixed; left: 20px; top: 50%; transform: translateY(-50%);
   display: flex;
-  flex-direction: column; /* Corrigido de flexDirection */
+  flex-direction: column;
   gap: 15px; z-index: 90;
 }
 
 .sidebar-item {
   position: relative;
   display: flex;
-  flex-direction: column; /* Corrigido de flexDirection */
-  align-items: center;    /* Corrigido de alignItems */
+  flex-direction: column;
+  align-items: center;
 }
 
 .sidebar-avatar {
@@ -293,15 +293,15 @@ body, html {
   background: rgba(0,0,0,0.8); padding: 2px 4px; border-radius: 2px;
 }
 
-/* --- LOGS CORRIGIDOS --- */
+/* --- LOGS --- */
 .logs-container {
   position: fixed; bottom: 20px; left: 20px;
   display: flex;
-  flex-direction: column; /* Corrigido */
+  flex-direction: column;
   gap: 8px;
   z-index: 95;
-  pointer-events: none;   /* Corrigido de pointerEvents */
-  max-width: 300px;       /* Corrigido de maxWidth */
+  pointer-events: none;
+  max-width: 300px;
 }
 
 .log-item {
