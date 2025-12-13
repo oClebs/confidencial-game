@@ -333,7 +333,7 @@ function App() {
       const sessionData = { roomId: dados.roomId, token: dados.userToken, nome: dados.jogadores[0].nome, senha };
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData));
       setSala(dados.roomId); setJogadores(dados.jogadores); setConfigRecebida(dados.config); setEntrou(true); setFase('LOBBY'); setErroLogin(''); setNome(dados.jogadores[0].nome);
-      adicionarLog({ msg: 'Sala criada com sucesso', tipo: 'info' });
+      // REMOVIDO LOG LOCAL AQUI PARA EVITAR DUPLICIDADE
     });
     socket.on('entrada_sucesso', (dados) => {
       const tokenSalvo = localStorage.getItem('censorizador_session') ? JSON.parse(localStorage.getItem('censorizador_session')).token : null;
@@ -341,13 +341,13 @@ function App() {
       const sessionData = { roomId: dados.roomId, token: tokenSalvo, nome: eu ? eu.nome : nome, senha };
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData));
       setSala(dados.roomId); setJogadores(dados.jogadores); setFase(dados.fase); setConfigRecebida(dados.config); setEntrou(true); setErroLogin('');
-      adicionarLog({ msg: 'Você entrou na operação', tipo: 'sucesso' });
+      // REMOVIDO LOG LOCAL AQUI PARA EVITAR DUPLICIDADE
     });
     
     socket.on('sessao_invalida', () => { localStorage.removeItem('censorizador_session'); setSessaoSalva(null); setSalaEhTwitch(false); });
     socket.on('banido_da_sala', (msg) => { localStorage.removeItem('censorizador_session'); alert('⛔ ' + msg); window.location.reload(); });
     
-    // LOG DE EVENTO
+    // LOG DE EVENTO (Vem do Server)
     socket.on('log_evento', (d) => { adicionarLog(d); });
     
     socket.on('erro_login', (msg) => { setErroLogin(msg); if (audioError.current) audioError.current.play().catch(()=>{}); });

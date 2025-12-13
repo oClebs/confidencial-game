@@ -3,10 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-// 👇 IMPORTA A INTELIGÊNCIA DE RADICAIS
 const natural = require('natural'); 
-
-// ⚠️ GARANTA QUE O ARQUIVO 'palavras.js' EXISTE NA PASTA BACKEND
 const { PALAVRAS } = require('./palavras');
 
 const app = express();
@@ -19,9 +16,9 @@ const io = new Server(server, {
 
 const salas = {};
 
-// --- CONFIGURAÇÃO DO STEMMER (RADICAIS) EM PORTUGUÊS ---
-const stemmer = natural.PorterStemmerPt; // Stemmer específico para PT
-const tokenizer = new natural.WordTokenizer(); // Quebrador de palavras
+// --- NLP / STEMMER ---
+const stemmer = natural.PorterStemmerPt;
+const tokenizer = new natural.WordTokenizer();
 
 function embaralhar(lista) {
   for (let i = lista.length - 1; i > 0; i--) {
@@ -44,14 +41,12 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
-// Regex Flexível (mantido para garantir acentuação correta na substituição)
 function gerarRegexFlexivel(texto) {
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const base = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const mapa = { 'a': '[aáàãâä]', 'e': '[eéèêë]', 'i': '[iíìîï]', 'o': '[oóòõôö]', 'u': '[uúùûü]', 'c': '[cç]', 'n': '[nñ]' };
     let pattern = "";
     for (let char of base) { pattern += mapa[char] || escapeRegex(char); }
-    // Removemos o (es|s)? daqui pois o Stemmer já vai cuidar das variações
     return new RegExp(pattern, 'gi');
 }
 
@@ -99,7 +94,9 @@ io.on('connection', (socket) => {
     });
 
     socket.emit('sala_criada_sucesso', { roomId: novoId, jogadores: salas[novoId].jogadores, userToken: tokenSeguro, config: configuracoes });
-    console.log(`🏠 Sala criada: ${novoId}`);
+    
+    // LOG DE CRIAÇÃO
+    io.to(novoId).emit('log_evento', { msg: `SISTEMA INICIADO POR ${nomeJogador}`, tipo: 'info' });
   });
 
   socket.on('entrar_sala', ({ roomId, senha, nomeJogador, token, twitchData }) => {
@@ -132,6 +129,9 @@ io.on('connection', (socket) => {
     socket.emit('entrada_sucesso', { roomId: idMaiusculo, jogadores: sala.jogadores, fase: sala.fase, config: sala.config });
     io.to(idMaiusculo).emit('atualizar_sala', sala.jogadores);
     
+    // 🔥 LOG GLOBAL PARA TODOS DA SALA 🔥
+    io.to(idMaiusculo).emit('log_evento', { msg: `${nomeJogador} CONECTADO`, tipo: 'entrada' });
+
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
         const payload = { fase: sala.fase, rodadaAtual: sala.indiceRodadaAtual + 1, totalRodadas: sala.jogadores.length * sala.config.numCiclos, meuPapel: 'SABOTADOR', protagonistas: null };
         if (sala.dadosRodada) { payload.palavraRevelada = sala.dadosRodada.palavra; }
@@ -147,10 +147,13 @@ io.on('connection', (socket) => {
       if (solicitante && solicitante.isHost) {
           const alvoIndex = sala.jogadores.findIndex(j => j.id === targetId);
           if (alvoIndex !== -1) {
-              const alvoId = sala.jogadores[alvoIndex].id;
+              const alvo = sala.jogadores[alvoIndex];
               sala.jogadores.splice(alvoIndex, 1);
-              io.to(alvoId).emit('banido_da_sala', 'Banido.');
+              io.to(alvo.id).emit('banido_da_sala', 'Banido.');
               io.to(roomId).emit('atualizar_sala', sala.jogadores);
+              
+              // LOG DE BANIMENTO
+              io.to(roomId).emit('log_evento', { msg: `${alvo.nome} FOI EXPULSO`, tipo: 'ban' });
           }
       }
   });
@@ -164,6 +167,8 @@ io.on('connection', (socket) => {
     sala.fase = 'PREPARACAO';
     sala.jogadores.forEach(j => io.to(j.id).emit('inicio_preparacao', { palavra: j.minhaPalavra, fase: 'PREPARACAO' }));
     iniciarTimer(nomeSala, sala.config.tempos.preparacao, () => { sala.indiceRodadaAtual = 0; iniciarRodadaDeJogo(nomeSala); });
+    
+    io.to(nomeSala).emit('log_evento', { msg: `OPERAÇÃO INICIADA`, tipo: 'info' });
   });
 
   socket.on('enviar_preparacao', ({ nomeSala, texto }) => {
@@ -186,19 +191,16 @@ io.on('connection', (socket) => {
     const cifrador = sala.jogadores[idx % total]; const decifrador = sala.jogadores[(idx + 1) % total];
     sala.jogadores.forEach(j => { if(j.id===cifrador.id) j.papel='CIFRADOR'; else if(j.id===decifrador.id) j.papel='DECIFRADOR'; else j.papel='SABOTADOR'; });
     
-    // --- LÓGICA DE AUTO-CENSURA INTELIGENTE (STEMMER) ---
+    // Log de quem é quem
+    io.to(nomeSala).emit('log_evento', { msg: `RODADA ${idx+1}: ${cifrador.nome} (Cifrador)`, tipo: 'info' });
+
     let texto = cifrador.meuTexto || "Perdido"; 
     const palavraSecreta = cifrador.minhaPalavra || "???";
     
-    // 1. Pega o radical da palavra secreta
     const radicalSecreto = stemmer.stem(palavraSecreta); 
-    
-    // 2. Quebra o texto do cifrador em palavras (tokens)
     const palavrasTexto = tokenizer.tokenize(texto);
-    
-    // 3. Verifica cada palavra do texto: se o radical for igual ao da secreta, censura
     const palavrasParaCensurar = new Set();
-    palavrasParaCensurar.add(palavraSecreta); // Garante a original
+    palavrasParaCensurar.add(palavraSecreta); 
 
     palavrasTexto.forEach(palavra => {
         if (stemmer.stem(palavra) === radicalSecreto) {
@@ -206,14 +208,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 4. Aplica a censura no texto
     palavrasParaCensurar.forEach(p => {
         texto = texto.replace(gerarRegexFlexivel(p), '[CENSURADO]');
     });
-    // ----------------------------------------------------
 
     sala.dadosRodada = { palavra: palavraSecreta, descricao: texto }; sala.sabotagens = {}; sala.fase = 'SABOTAGEM';
-    
     iniciarTimer(nomeSala, sala.config.tempos.sabotagem, () => finalizeFaseSabotagem(nomeSala));
     const protagonistas = { cifrador: cifrador.nome, decifrador: decifrador.nome, sabotadores: sala.jogadores.filter(j=>j.id!==cifrador.id && j.id!==decifrador.id).map(j=>j.nome) };
     
@@ -234,32 +233,18 @@ io.on('connection', (socket) => {
   function finalizeFaseSabotagem(nomeSala) {
     const sala = salas[nomeSala]; if (!sala) return;
     let txt = sala.dadosRodada.descricao;
-    
-    // Recupera todas as tentativas de sabotagem
     const sabotagens = Object.values(sala.sabotagens).flat().filter(p=>p&&p.trim().length>0);
-    
-    // --- LÓGICA DE SABOTAGEM INTELIGENTE (STEMMER) ---
-    // Agora o sabotador também é poderoso: se ele chutar "Scan", censura "Scanner"
-    const tokensTexto = tokenizer.tokenize(txt); // Analisa o texto atual (já censurado parcialmente)
+    const tokensTexto = tokenizer.tokenize(txt); 
     
     sabotagens.forEach(tentativa => {
         const radicalTentativa = stemmer.stem(tentativa);
         const palavrasAlvo = new Set();
-        palavrasAlvo.add(tentativa); // Adiciona a exata
-
-        // Busca no texto palavras com o mesmo radical da tentativa
+        palavrasAlvo.add(tentativa);
         tokensTexto.forEach(palavraNoTexto => {
-            if (stemmer.stem(palavraNoTexto) === radicalTentativa) {
-                palavrasAlvo.add(palavraNoTexto);
-            }
+            if (stemmer.stem(palavraNoTexto) === radicalTentativa) { palavrasAlvo.add(palavraNoTexto); }
         });
-
-        // Censura todas as variações encontradas
-        palavrasAlvo.forEach(alvo => {
-            txt = txt.replace(gerarRegexFlexivel(alvo), '[CENSURADO]');
-        });
+        palavrasAlvo.forEach(alvo => { txt = txt.replace(gerarRegexFlexivel(alvo), '[CENSURADO]'); });
     });
-    // ------------------------------------------------
 
     sala.fase = 'DECIFRANDO'; sala.dadosRodada.textoCensurado = txt;
     iniciarTimer(nomeSala, sala.config.tempos.decifracao, () => calcularPontos(nomeSala, null));
@@ -272,13 +257,7 @@ io.on('connection', (socket) => {
     const sala = salas[nomeSala]; if (!sala) return;
     const alvo = sala.dadosRodada.palavra.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     const chute = (tentativa||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    
-    // --- COMPARAÇÃO INTELIGENTE NO CHUTE TAMBÉM ---
-    // Se a palavra era "Correr" e ele chutou "Corrida", deve aceitar? 
-    // Por padrão de jogo, costuma ser EXATO, mas se quiser flexível, avise.
-    // Vou manter EXATO para o Decifrador (mais difícil), mas flexível para Sabotador.
     const acertou = chute === alvo; 
-    // ----------------------------------------------
 
     const resumo = [];
     const decifrador = sala.jogadores.find(j=>j.papel==='DECIFRADOR'); const cifrador = sala.jogadores.find(j=>j.papel==='CIFRADOR');
@@ -289,25 +268,40 @@ io.on('connection', (socket) => {
     }
     
     const txtOriginal = sala.dadosRodada.descricao;
-    // Pontuação dos Sabotadores (usando Radicais)
     for(const [id, palavras] of Object.entries(sala.sabotagens)) {
         palavras.forEach(p => { 
             const radicalP = stemmer.stem(p);
-            // Verifica se ALGUMA palavra do texto original tinha esse radical
             const tokensOriginais = tokenizer.tokenize(txtOriginal);
             const acertouSabotagem = tokensOriginais.some(t => stemmer.stem(t) === radicalP);
-            
-            if(acertouSabotagem) { 
-                const s = sala.jogadores.find(j=>j.id===id); 
-                if(s) s.pontos+=1; 
-            } 
+            if(acertouSabotagem) { const s = sala.jogadores.find(j=>j.id===id); if(s) s.pontos+=1; } 
         });
     }
     
     io.to(nomeSala).emit('resultado_rodada', { acertou, palavraSecreta: alvo, tentativa: tentativa||"Tempo esgotado", resumo, ranking: sala.jogadores.sort((a,b)=>b.pontos-a.pontos) });
   }
 
-  socket.on('disconnect', () => { /* Lógica de desconexão padrão */ });
+  // 🔥 DETECÇÃO DE DESCONEXÃO (SAÍDA DE JOGADOR) 🔥
+  socket.on('disconnect', () => {
+    // Procura em todas as salas onde esse socket estava
+    for (const roomId in salas) {
+        const sala = salas[roomId];
+        const index = sala.jogadores.findIndex(j => j.id === socket.id);
+        if (index !== -1) {
+            const player = sala.jogadores[index];
+            sala.jogadores.splice(index, 1); // Remove o jogador
+            
+            // Avisa todo mundo da sala
+            io.to(roomId).emit('atualizar_sala', sala.jogadores);
+            io.to(roomId).emit('log_evento', { msg: `${player.nome} PERDEU SINAL`, tipo: 'ban' });
+            
+            // Se a sala ficar vazia, limpa a memória (opcional)
+            if (sala.jogadores.length === 0) {
+                // Configura um timer para destruir a sala se ninguém voltar em 1 min (exemplo)
+            }
+            break;
+        }
+    }
+  });
 });
 
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
