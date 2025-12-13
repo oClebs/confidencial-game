@@ -14,20 +14,18 @@ const socket = io(
 
 // --- ESTILOS ---
 const styles = {
-  // O CONTAINER PRINCIPAL AGORA É A PRÓPRIA TELA
   mainWrapper: {
     position: 'relative',
     minHeight: '100vh',
     width: '100%',
     fontFamily: "'Courier Prime', 'Courier New', monospace",
-    color: '#e0e0e0', // Texto claro padrão
+    color: '#e0e0e0',
     backgroundColor: '#0a0a0a', 
     backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #000 90%)',
     overflowX: 'hidden',
     overflowY: 'auto', 
   },
 
-  // CONTAINER DE CONTEÚDO CENTRALIZADO
   contentContainer: {
     maxWidth: '800px',
     width: '100%',
@@ -42,7 +40,7 @@ const styles = {
     justifyContent: 'center' 
   },
 
-  // --- EFEITOS CRT SUAVES ---
+  // EFEITOS CRT
   scanlines: {
     pointerEvents: 'none',
     position: 'fixed',
@@ -61,9 +59,7 @@ const styles = {
     zIndex: 11,
   },
 
-  // --- ELEMENTOS DE UI ---
-
-  // Logo com brilho
+  // --- UI ELEMENTS ---
   logoHero: {
     width: '100%', 
     maxWidth: '450px', 
@@ -72,135 +68,71 @@ const styles = {
     animation: 'float 6s ease-in-out infinite'
   },
 
-  // Inputs Estilo Terminal
   inputCRT: {
-    padding: '15px',
-    margin: '10px 0',
-    fontSize: '18px',
-    color: '#fff',
+    padding: '15px', margin: '10px 0', fontSize: '18px', color: '#fff',
     backgroundColor: 'rgba(255, 255, 255, 0.07)',
     border: '1px solid rgba(255, 255, 255, 0.2)',
-    width: '100%',
-    fontFamily: "'Courier Prime', monospace",
-    fontWeight: 600,
-    boxSizing: 'border-box',
-    outline: 'none',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    borderRadius: '4px',
-    transition: 'all 0.3s ease'
+    width: '100%', fontFamily: "'Courier Prime', monospace", fontWeight: 600,
+    boxSizing: 'border-box', outline: 'none', textTransform: 'uppercase',
+    letterSpacing: '1px', borderRadius: '4px', transition: 'all 0.3s ease'
   },
 
   inputCRT_Small: {
-    padding: '8px',
-    margin: '0',
-    fontSize: '16px',
-    color: '#fff',
+    padding: '8px', margin: '0', fontSize: '16px', color: '#fff',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     border: '1px solid rgba(255, 255, 255, 0.3)',
-    width: '100%',
-    fontFamily: "inherit",
-    fontWeight: 600,
-    boxSizing: 'border-box',
-    outline: 'none',
-    textAlign: 'center',
-    borderRadius: '4px'
+    width: '100%', fontFamily: "inherit", fontWeight: 600,
+    boxSizing: 'border-box', outline: 'none', textAlign: 'center', borderRadius: '4px'
   },
 
-  // Botões
   btnPrimary: {
-    padding: '18px 30px',
-    width: '100%',
+    padding: '18px 30px', width: '100%',
     background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)', 
-    color: '#fff',
-    border: '1px solid #60a5fa',
-    fontFamily: "inherit",
-    fontWeight: 800,
-    letterSpacing: '2px',
-    textTransform: 'uppercase',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginTop: '20px',
-    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
-    borderRadius: '2px',
-    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-    transition: 'transform 0.1s'
+    color: '#fff', border: '1px solid #60a5fa',
+    fontFamily: "inherit", fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase',
+    fontSize: '16px', cursor: 'pointer', marginTop: '20px',
+    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)', borderRadius: '2px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)', transition: 'transform 0.1s'
   },
 
   btnSecondary: {
-    padding: '15px',
-    width: '100%',
-    background: 'transparent',
-    color: '#aaa',
-    border: '1px solid #444',
-    fontFamily: "inherit",
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    fontSize: '14px',
-    cursor: 'pointer',
-    marginTop: '10px',
-    borderRadius: '2px',
-    transition: 'all 0.2s'
+    padding: '15px', width: '100%', background: 'transparent',
+    color: '#aaa', border: '1px solid #444',
+    fontFamily: "inherit", fontWeight: 700, textTransform: 'uppercase',
+    fontSize: '14px', cursor: 'pointer', marginTop: '10px',
+    borderRadius: '2px', transition: 'all 0.2s'
   },
 
-  // Cards dos Jogadores (Terminal Style)
   agentCard: {
-    backgroundColor: 'rgba(20, 20, 20, 0.8)',
-    backdropFilter: 'blur(5px)', 
-    color: '#fff',
-    padding: '15px',
-    width: '120px',
-    margin: '10px',
-    border: '1px solid #333',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    fontSize: '12px',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(20, 20, 20, 0.8)', backdropFilter: 'blur(5px)', 
+    color: '#fff', padding: '15px', width: '120px', margin: '10px',
+    border: '1px solid #333', display: 'flex', flexDirection: 'column',
+    alignItems: 'center', fontSize: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
     borderRadius: '8px'
   },
   
   agentPhoto: {
-    width:'60px', height:'60px', 
-    background:'#222', marginBottom:'10px', 
-    overflow:'hidden', borderRadius:'50%', 
-    border:'2px solid #555'
+    width:'60px', height:'60px', background:'#222', marginBottom:'10px', 
+    overflow:'hidden', borderRadius:'50%', border:'2px solid #555'
   },
 
-  // --- ÁREA DE PAPEL (JOGO) ---
-  
   paper: {
     backgroundColor: '#f0e6d2',
     backgroundImage: 'linear-gradient(to bottom, #fdfbf7 0%, #f0e6d2 100%)',
-    padding: '40px 30px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-    width: '100%',
-    margin: '20px auto',
-    position: 'relative',
-    transform: 'rotate(-1deg)',
-    borderRadius: '2px',
-    color: '#1a1a1a', // TEXTO ESCURO NO PAPEL
+    padding: '40px 30px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+    width: '100%', margin: '20px auto', position: 'relative',
+    transform: 'rotate(-1deg)', borderRadius: '2px', color: '#1a1a1a', 
   },
 
-  // Área de Texto Grande (Caderno Pautado)
   paperTextArea: {
-    width: '100%',
-    height: '350px', 
-    backgroundColor: 'transparent',
-    border: 'none',
-    resize: 'none',
-    outline: 'none',
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '22px',
-    fontWeight: 'bold',
-    color: '#1a1a1a', // PRETO
-    lineHeight: '32px', 
+    width: '100%', height: '350px', backgroundColor: 'transparent',
+    border: 'none', resize: 'none', outline: 'none',
+    fontFamily: "'Courier Prime', monospace", fontSize: '22px',
+    fontWeight: 'bold', color: '#1a1a1a', lineHeight: '32px', 
     backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #ccc 31px, #ccc 32px)',
-    backgroundAttachment: 'local',
-    marginTop: '10px'
+    backgroundAttachment: 'local', marginTop: '10px'
   },
 
-  // Input linha única (Sabotagem/Chute)
   inputPaper: {
     padding: '10px', margin: '8px 0', fontSize: '18px',
     color: '#1a1a1a', backgroundColor: 'rgba(255,255,255,0.5)',
@@ -211,25 +143,40 @@ const styles = {
   folderTab: {
     position: 'absolute', top: '-25px', left: '0',
     width: '140px', height: '30px',
-    backgroundColor: '#f0e6d2',
-    borderRadius: '5px 5px 0 0',
+    backgroundColor: '#f0e6d2', borderRadius: '5px 5px 0 0',
     display: 'flex', alignItems: 'center', paddingLeft: '15px',
     fontSize: '10px', fontWeight: 'bold', color: '#666', letterSpacing: '1px',
   },
 
   navBar: {
-    position: 'absolute',
-    top: 0, left: 0, width: '100%',
+    position: 'absolute', top: 0, left: 0, width: '100%',
     display: 'flex', justifyContent: 'space-between',
-    padding: '15px 30px',
-    boxSizing: 'border-box',
+    padding: '15px 30px', boxSizing: 'border-box',
     borderBottom: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(0,0,0,0.3)',
-    zIndex: 20
+    background: 'rgba(0,0,0,0.3)', zIndex: 20
+  },
+
+  // BOTÃO DE AJUDA FLUTUANTE
+  helpBtn: {
+    position: 'fixed', bottom: '30px', right: '30px',
+    width: '50px', height: '50px', borderRadius: '50%',
+    background: '#eab308', color: '#000',
+    border: '2px solid #fff', fontSize: '24px', fontWeight: 'bold',
+    cursor: 'pointer', zIndex: 100, boxShadow: '0 0 15px rgba(234, 179, 8, 0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center'
+  },
+
+  // CAIXA DE REGRAS (Visual Terminal)
+  rulesBox: {
+    position: 'fixed', bottom: '100px', right: '30px',
+    width: '300px', backgroundColor: 'rgba(10, 10, 10, 0.95)',
+    color: '#afffbf', padding: '20px', border: '1px solid #afffbf',
+    borderRadius: '4px', boxShadow: '0 0 20px rgba(0,0,0,0.8)',
+    zIndex: 99, fontFamily: "'Courier New', monospace",
+    transformOrigin: 'bottom right', transition: 'transform 0.2s ease-out'
   }
 };
 
-// --- ESTRUTURA GLOBAL ---
 const GlobalCRT = ({ children }) => (
   <div style={styles.mainWrapper}>
     <div style={styles.scanlines} />
@@ -454,10 +401,84 @@ function App() {
     </div>
   );
 
-  const Timer = () => (
-    <div style={{ position: 'absolute', top: '15px', right: '30px', color: tempoRestante < 10 ? '#ef4444' : '#fff', fontSize: '20px', fontWeight: 'bold', textShadow: '0 0 10px currentColor', zIndex: 50 }}>
-      {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
-    </div>
+const Timer = () => {
+    // 1. Descobre o tempo total da fase atual para calcular a %
+    let tempoTotalFase = 1; // Evita divisão por zero
+    if (fase === 'PREPARACAO') tempoTotalFase = parseInt(configSala.tempos.preparacao);
+    else if (fase === 'SABOTAGEM') tempoTotalFase = parseInt(configSala.tempos.sabotagem);
+    else if (fase === 'DECIFRANDO') tempoTotalFase = parseInt(configSala.tempos.decifracao);
+    
+    // 2. Calcula a porcentagem restante
+    const porcentagem = Math.min(100, Math.max(0, (tempoRestante / tempoTotalFase) * 100));
+    
+    // 3. Define a cor: Verde normal, Vermelho quando estiver acabando (< 20%)
+    const corDinamica = porcentagem < 25 ? '#ef4444' : '#afffbf';
+
+    return (
+      <div style={{ 
+          position: 'fixed', 
+          top: '15px', 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '220px' // Largura fixa para a barra não ficar dançando
+      }}>
+        {/* TEXTO DO RELÓGIO */}
+        <div style={{ 
+            color: corDinamica, 
+            fontSize: '24px', 
+            fontWeight: 'bold', 
+            textShadow: `0 0 10px ${corDinamica}`,
+            marginBottom: '4px',
+            fontFamily: "'Courier Prime', monospace"
+        }}>
+          {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
+        </div>
+
+        {/* CONTAINER DA BARRA (Fundo Escuro) */}
+        <div style={{
+            width: '100%',
+            height: '6px',
+            backgroundColor: 'rgba(0, 20, 0, 0.6)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '4px',
+            overflow: 'hidden'
+        }}>
+            {/* A BARRA QUE DIMINUI */}
+            <div style={{
+                height: '100%',
+                width: `${porcentagem}%`,
+                backgroundColor: corDinamica,
+                boxShadow: `0 0 8px ${corDinamica}`, // Brilho Neon
+                transition: 'width 0.2s linear, background-color 0.5s ease' // Animação suave
+            }} />
+        </div>
+      </div>
+    );
+  };
+
+  // WIDGET DE REGRAS RESTAURADO
+  const RulesWidget = () => (
+    <>
+      <button onClick={() => setExibirRegras(!exibirRegras)} style={styles.helpBtn} title="Protocolos da Missão">?</button>
+      <div style={{ ...styles.rulesBox, transform: exibirRegras ? 'scale(1)' : 'scale(0)' }}>
+        <div style={{ borderBottom: '1px dashed #afffbf', paddingBottom: '10px', marginBottom: '10px' }}>
+          <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize:'16px' }}>📂 PROTOCOLOS</h3>
+        </div>
+        <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '12px', lineHeight: '1.5em', listStyle: 'none' }}>
+          <li style={{ marginBottom: '8px' }}><strong>1. O SEGREDO:</strong> Cada um recebe uma palavra secreta.</li>
+          <li style={{ marginBottom: '8px' }}><strong>2. 🕵️ CIFRADOR:</strong> Descreve a palavra sem usá-la diretamente.</li>
+          <li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras para quebrar o texto.</li>
+          <li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar a palavra original.</li>
+        </ul>
+        <div style={{ marginTop: '10px', fontSize: '10px', fontStyle: 'italic', textAlign: 'center', color: '#ff6666' }}>
+          "CONFIE EM NINGUÉM."
+        </div>
+      </div>
+    </>
   );
 
   const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ff6666' : '#86efac'; return (<div style={{ position: 'fixed', top: '60px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '10px', zIndex: 100 }}>{aviso.msg}</div>); };
@@ -553,7 +574,7 @@ function App() {
       );
     }
 
-    // --- FASE DE PREPARAÇÃO CORRIGIDA ---
+    // --- FASE DE PREPARAÇÃO ---
     if (fase === 'PREPARACAO') {
       const devoEsconder = (souHost && configRecebida?.streamerMode) || modoStreamerLocal;
       return (
@@ -572,7 +593,7 @@ function App() {
                     <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', textShadow: '0 0 10px #fff' }}>{minhaPalavraInicial}</div>
                   </div>
                   
-                  {/* PAPEL COM ÁREA DE TEXTO GRANDE E PRETA */}
+                  {/* PAPEL COM ÁREA DE TEXTO */}
                   <div style={styles.paper}>
                     <div style={styles.folderTab}>RELATÓRIO //</div>
                     <textarea 
@@ -584,7 +605,6 @@ function App() {
                       onChange={(e) => setTextoPreparacao(e.target.value)} 
                       style={styles.paperTextArea} 
                     />
-                    {/* Contador de Caracteres */}
                     <div style={{ textAlign: 'right', fontSize: '12px', color: '#666', marginTop: '5px' }}>
                         {textoPreparacao.length}/200
                     </div>
@@ -653,7 +673,7 @@ function App() {
     return <div style={{ color: 'red' }}>ERRO DE FASE: {fase}</div>;
   };
 
-  return <GlobalCRT>{renderContent()}<AvisoToast /></GlobalCRT>;
+  return <GlobalCRT><RulesWidget />{renderContent()}<AvisoToast /></GlobalCRT>;
 }
 
 export default App;
