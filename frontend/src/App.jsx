@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import io from 'socket.io-client';
 import logoImage from './assets/logo.png';
 
-// 🟣 SEU CLIENT ID
+// 🟣 SEU CLIENT ID TWITCH
 const TWITCH_CLIENT_ID = 'hoevm6fscw93d5c01d7ermgu6nbhk7';
 
 const socket = io(
@@ -14,20 +14,19 @@ const socket = io(
 
 // --- ESTILOS ---
 const styles = {
-  // O CONTAINER PRINCIPAL AGORA É A PRÓPRIA TELA
+  // TELA PRINCIPAL
   mainWrapper: {
     position: 'relative',
     minHeight: '100vh',
     width: '100%',
     fontFamily: "'Courier Prime', 'Courier New', monospace",
-    color: '#e0e0e0', // Texto claro padrão
+    color: '#e0e0e0', 
     backgroundColor: '#0a0a0a', 
     backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #000 90%)',
     overflowX: 'hidden',
     overflowY: 'auto', 
   },
 
-  // CONTAINER DE CONTEÚDO CENTRALIZADO
   contentContainer: {
     maxWidth: '800px',
     width: '100%',
@@ -42,214 +41,144 @@ const styles = {
     justifyContent: 'center' 
   },
 
-  // --- EFEITOS CRT SUAVES ---
+  // EFEITOS CRT
   scanlines: {
-    pointerEvents: 'none',
-    position: 'fixed',
-    top: 0, left: 0, width: '100%', height: '100%',
+    pointerEvents: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
     background: 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2))',
-    backgroundSize: '100% 4px',
-    zIndex: 10,
-    opacity: 0.6 
+    backgroundSize: '100% 4px', zIndex: 10, opacity: 0.6 
   },
-
   vignette: {
-    pointerEvents: 'none',
-    position: 'fixed',
-    top: 0, left: 0, width: '100%', height: '100%',
-    background: 'radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)',
-    zIndex: 11,
+    pointerEvents: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+    background: 'radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)', zIndex: 11,
   },
 
-  // --- ELEMENTOS DE UI ---
-
-  // Logo com brilho
+  // UI ELEMENTS
   logoHero: {
-    width: '100%', 
-    maxWidth: '450px', 
-    marginBottom: '30px',
+    width: '100%', maxWidth: '450px', marginBottom: '30px',
     filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3)) contrast(1.1) brightness(1.1)',
     animation: 'float 6s ease-in-out infinite'
   },
 
-  // Inputs Estilo Terminal
   inputCRT: {
-    padding: '15px',
-    margin: '10px 0',
-    fontSize: '18px',
-    color: '#fff',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    width: '100%',
-    fontFamily: "'Courier Prime', monospace",
-    fontWeight: 600,
-    boxSizing: 'border-box',
-    outline: 'none',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    borderRadius: '4px',
-    transition: 'all 0.3s ease'
+    padding: '15px', margin: '10px 0', fontSize: '18px', color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)', border: '1px solid rgba(255, 255, 255, 0.2)',
+    width: '100%', fontFamily: "'Courier Prime', monospace", fontWeight: 600,
+    boxSizing: 'border-box', outline: 'none', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: '4px'
   },
-
   inputCRT_Small: {
-    padding: '8px',
-    margin: '0',
-    fontSize: '16px',
-    color: '#fff',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    width: '100%',
-    fontFamily: "inherit",
-    fontWeight: 600,
-    boxSizing: 'border-box',
-    outline: 'none',
-    textAlign: 'center',
-    borderRadius: '4px'
+    padding: '8px', margin: '0', fontSize: '16px', color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.3)',
+    width: '100%', fontFamily: "inherit", fontWeight: 600, boxSizing: 'border-box',
+    outline: 'none', textAlign: 'center', borderRadius: '4px'
   },
 
-  // Botões
   btnPrimary: {
-    padding: '18px 30px',
-    width: '100%',
-    background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)', 
-    color: '#fff',
-    border: '1px solid #60a5fa',
-    fontFamily: "inherit",
-    fontWeight: 800,
-    letterSpacing: '2px',
-    textTransform: 'uppercase',
-    fontSize: '16px',
-    cursor: 'pointer',
-    marginTop: '20px',
-    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
-    borderRadius: '2px',
-    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-    transition: 'transform 0.1s'
+    padding: '18px 30px', width: '100%',
+    background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)', color: '#fff',
+    border: '1px solid #60a5fa', fontFamily: "inherit", fontWeight: 800,
+    letterSpacing: '2px', textTransform: 'uppercase', fontSize: '16px', cursor: 'pointer',
+    marginTop: '20px', boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)', borderRadius: '2px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)', transition: 'transform 0.1s'
   },
-
   btnSecondary: {
-    padding: '15px',
-    width: '100%',
-    background: 'transparent',
-    color: '#aaa',
-    border: '1px solid #444',
-    fontFamily: "inherit",
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    fontSize: '14px',
-    cursor: 'pointer',
-    marginTop: '10px',
-    borderRadius: '2px',
-    transition: 'all 0.2s'
+    padding: '15px', width: '100%', background: 'transparent', color: '#aaa',
+    border: '1px solid #444', fontFamily: "inherit", fontWeight: 700,
+    textTransform: 'uppercase', fontSize: '14px', cursor: 'pointer', marginTop: '10px',
+    borderRadius: '2px', transition: 'all 0.2s'
   },
 
-  // Cards dos Jogadores (Terminal Style)
+  // CARD PARA O LOBBY (Central)
   agentCard: {
-    backgroundColor: 'rgba(20, 20, 20, 0.8)',
-    backdropFilter: 'blur(5px)', 
-    color: '#fff',
-    padding: '15px',
-    width: '120px',
-    margin: '10px',
-    border: '1px solid #333',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    fontSize: '12px',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-    borderRadius: '8px'
+    backgroundColor: 'rgba(20, 20, 20, 0.8)', backdropFilter: 'blur(5px)', color: '#fff',
+    padding: '15px', width: '120px', margin: '10px', border: '1px solid #333',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '12px',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.5)', borderRadius: '8px'
   },
-  
   agentPhoto: {
-    width:'60px', height:'60px', 
-    background:'#222', marginBottom:'10px', 
-    overflow:'hidden', borderRadius:'50%', 
-    border:'2px solid #555'
+    width:'60px', height:'60px', background:'#222', marginBottom:'10px', overflow:'hidden',
+    borderRadius:'50%', border:'2px solid #555'
   },
 
-  // --- ÁREA DE PAPEL (JOGO) ---
-  
+  // --- NOVA SIDEBAR LATERAL (JOGADORES EM JOGO) ---
+  sidebarContainer: {
+    position: 'fixed', left: '20px', top: '50%', transform: 'translateY(-50%)',
+    display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 90
+  },
+  sidebarItem: {
+    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center'
+  },
+  sidebarAvatar: {
+    width: '50px', height: '50px', borderRadius: '50%', border: '2px solid #444',
+    overflow: 'hidden', background: '#000', transition: 'all 0.3s', cursor: 'pointer',
+    boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+  },
+  sidebarName: {
+    fontSize: '10px', color: '#888', marginTop: '4px', textTransform: 'uppercase',
+    background: 'rgba(0,0,0,0.8)', padding: '2px 4px', borderRadius: '2px'
+  },
+  sidebarRoleBadge: {
+    position: 'absolute', top: '-5px', right: '-5px', fontSize: '12px'
+  },
+
+  // --- LOGS DE SISTEMA (Canto Inferior Esquerdo) ---
+  logsContainer: {
+    position: 'fixed', bottom: '20px', left: '20px', display: 'flex', flexDirection: 'column',
+    gap: '8px', zIndex: 95, pointerEvents: 'none', maxWidth: '300px'
+  },
+  logItem: {
+    background: 'rgba(0, 0, 0, 0.8)', padding: '8px 12px', borderRadius: '4px',
+    borderLeft: '4px solid #fff', color: '#fff', fontFamily: 'monospace', fontSize: '12px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.5)', animation: 'fadeIn 0.3s ease-out'
+  },
+
+  // PAPEL & INPUTS DE JOGO
   paper: {
-    backgroundColor: '#f0e6d2',
-    backgroundImage: 'linear-gradient(to bottom, #fdfbf7 0%, #f0e6d2 100%)',
-    padding: '40px 30px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-    width: '100%',
-    margin: '20px auto',
-    position: 'relative',
-    transform: 'rotate(-1deg)',
-    borderRadius: '2px',
-    color: '#1a1a1a', // TEXTO ESCURO NO PAPEL
+    backgroundColor: '#f0e6d2', backgroundImage: 'linear-gradient(to bottom, #fdfbf7 0%, #f0e6d2 100%)',
+    padding: '40px 30px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', width: '100%',
+    margin: '20px auto', position: 'relative', transform: 'rotate(-1deg)', borderRadius: '2px', color: '#1a1a1a', 
   },
-
-  // Área de Texto Grande (Caderno Pautado)
   paperTextArea: {
-    width: '100%',
-    height: '350px', 
-    backgroundColor: 'transparent',
-    border: 'none',
-    resize: 'none',
-    outline: 'none',
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '22px',
-    fontWeight: 'bold',
-    color: '#1a1a1a', // PRETO
-    lineHeight: '32px', 
+    width: '100%', height: '350px', backgroundColor: 'transparent', border: 'none',
+    resize: 'none', outline: 'none', fontFamily: "'Courier Prime', monospace", fontSize: '22px',
+    fontWeight: 'bold', color: '#1a1a1a', lineHeight: '32px', 
     backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #ccc 31px, #ccc 32px)',
-    backgroundAttachment: 'local',
-    marginTop: '10px'
+    backgroundAttachment: 'local', marginTop: '10px'
   },
-
-  // Input linha única (Sabotagem/Chute)
   inputPaper: {
-    padding: '10px', margin: '8px 0', fontSize: '18px',
-    color: '#1a1a1a', backgroundColor: 'rgba(255,255,255,0.5)',
-    border: 'none', borderBottom: '2px dashed #666',
+    padding: '10px', margin: '8px 0', fontSize: '18px', color: '#1a1a1a',
+    backgroundColor: 'rgba(255,255,255,0.5)', border: 'none', borderBottom: '2px dashed #666',
     width: '100%', fontFamily: "inherit", fontWeight: 'bold', outline: 'none'
   },
-
   folderTab: {
-    position: 'absolute', top: '-25px', left: '0',
-    width: '140px', height: '30px',
-    backgroundColor: '#f0e6d2',
-    borderRadius: '5px 5px 0 0',
-    display: 'flex', alignItems: 'center', paddingLeft: '15px',
-    fontSize: '10px', fontWeight: 'bold', color: '#666', letterSpacing: '1px',
+    position: 'absolute', top: '-25px', left: '0', width: '140px', height: '30px',
+    backgroundColor: '#f0e6d2', borderRadius: '5px 5px 0 0', display: 'flex', alignItems: 'center',
+    paddingLeft: '15px', fontSize: '10px', fontWeight: 'bold', color: '#666', letterSpacing: '1px',
   },
 
+  // TOP BAR & HELP
   navBar: {
-    position: 'absolute',
-    top: 0, left: 0, width: '100%',
-    display: 'flex', justifyContent: 'space-between',
-    padding: '15px 30px',
-    boxSizing: 'border-box',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(0,0,0,0.3)',
-    zIndex: 20
+    position: 'absolute', top: 0, left: 0, width: '100%', display: 'flex', justifyContent: 'space-between',
+    padding: '15px 30px', boxSizing: 'border-box', borderBottom: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(0,0,0,0.3)', zIndex: 20
   },
-
-  // BOTÃO DE AJUDA FLUTUANTE
   helpBtn: {
-    position: 'fixed', bottom: '30px', right: '30px',
-    width: '50px', height: '50px', borderRadius: '50%',
-    background: '#eab308', color: '#000',
-    border: '2px solid #fff', fontSize: '24px', fontWeight: 'bold',
-    cursor: 'pointer', zIndex: 100, boxShadow: '0 0 15px rgba(234, 179, 8, 0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
+    position: 'fixed', bottom: '30px', right: '30px', width: '50px', height: '50px',
+    borderRadius: '50%', background: '#eab308', color: '#000', border: '2px solid #fff',
+    fontSize: '24px', fontWeight: 'bold', cursor: 'pointer', zIndex: 100,
+    boxShadow: '0 0 15px rgba(234, 179, 8, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
   },
-
-  // CAIXA DE REGRAS (Visual Terminal)
   rulesBox: {
-    position: 'fixed', bottom: '100px', right: '30px',
-    width: '300px', backgroundColor: 'rgba(10, 10, 10, 0.95)',
-    color: '#afffbf', padding: '20px', border: '1px solid #afffbf',
-    borderRadius: '4px', boxShadow: '0 0 20px rgba(0,0,0,0.8)',
-    zIndex: 99, fontFamily: "'Courier New', monospace",
+    position: 'fixed', bottom: '100px', right: '30px', width: '300px', backgroundColor: 'rgba(10, 10, 10, 0.95)',
+    color: '#afffbf', padding: '20px', border: '1px solid #afffbf', borderRadius: '4px',
+    boxShadow: '0 0 20px rgba(0,0,0,0.8)', zIndex: 99, fontFamily: "'Courier New', monospace",
     transformOrigin: 'bottom right', transition: 'transform 0.2s ease-out'
-  }
+  },
+  menuBan: {
+    position: 'fixed', backgroundColor: '#111', color: '#ef4444', border: '1px solid #ef4444',
+    padding: '15px', zIndex: 99999, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,0.8)', fontWeight: 'bold',
+  },
 };
 
-// --- ESTRUTURA GLOBAL ---
 const GlobalCRT = ({ children }) => (
   <div style={styles.mainWrapper}>
     <div style={styles.scanlines} />
@@ -257,6 +186,7 @@ const GlobalCRT = ({ children }) => (
     <div style={styles.contentContainer}>{children}</div>
     <style>{`
       @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
       button:hover { opacity: 0.9; transform: translateY(-1px); }
       button:active { transform: translateY(1px); }
       ::-webkit-scrollbar { width: 8px; }
@@ -294,7 +224,6 @@ function App() {
     }
   }, []);
 
-  // --- ESTADOS ---
   const [entrou, setEntrou] = useState(false);
   const [nome, setNome] = useState('');
   const [sala, setSala] = useState('');
@@ -327,13 +256,8 @@ function App() {
   const [linkCopiado, setLinkCopiado] = useState(false);
   const [salaEhTwitch, setSalaEhTwitch] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState(null);
-
-  const [configSala, setConfigSala] = useState({
-    twitchAuth: false,
-    streamerMode: false,
-    numCiclos: 1,
-    tempos: { preparacao: 120, sabotagem: 30, decifracao: 45 }
-  });
+  
+  const [configSala, setConfigSala] = useState({ twitchAuth: false, streamerMode: false, numCiclos: 1, tempos: { preparacao: 120, sabotagem: 30, decifracao: 45 } });
   const [configRecebida, setConfigRecebida] = useState(null);
   const [janelaExternaAberta, setJanelaExternaAberta] = useState(false);
   const [menuBan, setMenuBan] = useState({ visivel: false, x: 0, y: 0, jogadorId: null, jogadorNome: '' });
@@ -356,8 +280,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (sala.length === 4) socket.emit('verificar_sala', sala);
-    else setSalaEhTwitch(false);
+    if (sala.length === 4) socket.emit('verificar_sala', sala); else setSalaEhTwitch(false);
   }, [sala]);
 
   useEffect(() => {
@@ -375,9 +298,7 @@ function App() {
   const processarTokenTwitch = async (accessToken) => {
     if (!accessToken) return;
     try {
-      const response = await fetch('https://api.twitch.tv/helix/users', {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID },
-      });
+      const response = await fetch('https://api.twitch.tv/helix/users', { headers: { Authorization: `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID }, });
       const data = await response.json();
       if (data.data && data.data.length > 0) {
         const userTwitch = data.data[0];
@@ -396,9 +317,7 @@ function App() {
     setAcaoPendente(acao);
     const redirectUri = window.location.origin;
     const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=user:read:email`;
-    const w = 500, h = 700;
-    const left = window.screen.width / 2 - w / 2;
-    const top = window.screen.height / 2 - h / 2;
+    const w = 500, h = 700; const left = window.screen.width/2 - w/2; const top = window.screen.height/2 - h/2;
     window.open(authUrl, 'Twitch Auth', `width=${w},height=${h},top=${top},left=${left}`);
   };
 
@@ -407,14 +326,14 @@ function App() {
     const roomParam = params.get('room');
     if (roomParam) { setSala(roomParam); setModoLogin('ENTRAR'); socket.emit('verificar_sala', roomParam); window.history.replaceState({}, document.title, '/'); }
     const saved = localStorage.getItem('censorizador_session');
-    if (saved) {
-      const parsed = JSON.parse(saved); setSessaoSalva(parsed); if (parsed.roomId) socket.emit('verificar_sala', parsed.roomId);
-    }
+    if (saved) { const parsed = JSON.parse(saved); setSessaoSalva(parsed); if (parsed.roomId) socket.emit('verificar_sala', parsed.roomId); }
+
     socket.on('info_sala_retorno', (dados) => { setSalaEhTwitch(dados.twitchAuth); });
     socket.on('sala_criada_sucesso', (dados) => {
       const sessionData = { roomId: dados.roomId, token: dados.userToken, nome: dados.jogadores[0].nome, senha };
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData));
       setSala(dados.roomId); setJogadores(dados.jogadores); setConfigRecebida(dados.config); setEntrou(true); setFase('LOBBY'); setErroLogin(''); setNome(dados.jogadores[0].nome);
+      adicionarLog({ msg: 'Sala criada com sucesso', tipo: 'info' });
     });
     socket.on('entrada_sucesso', (dados) => {
       const tokenSalvo = localStorage.getItem('censorizador_session') ? JSON.parse(localStorage.getItem('censorizador_session')).token : null;
@@ -422,22 +341,22 @@ function App() {
       const sessionData = { roomId: dados.roomId, token: tokenSalvo, nome: eu ? eu.nome : nome, senha };
       localStorage.setItem('censorizador_session', JSON.stringify(sessionData));
       setSala(dados.roomId); setJogadores(dados.jogadores); setFase(dados.fase); setConfigRecebida(dados.config); setEntrou(true); setErroLogin('');
+      adicionarLog({ msg: 'Você entrou na operação', tipo: 'sucesso' });
     });
+    
     socket.on('sessao_invalida', () => { localStorage.removeItem('censorizador_session'); setSessaoSalva(null); setSalaEhTwitch(false); });
     socket.on('banido_da_sala', (msg) => { localStorage.removeItem('censorizador_session'); alert('⛔ ' + msg); window.location.reload(); });
-    socket.on('log_evento', (d) => { setLogsSistema((p) => [...p, { ...d, id: Date.now() }]); });
     
-    // --- CORREÇÃO DE SOM: LOGIN ERRO ---
-    socket.on('erro_login', (msg) => { 
-        setErroLogin(msg); 
-        if (audioError.current) audioError.current.play().catch(()=>{});
-    });
-
+    // LOG DE EVENTO
+    socket.on('log_evento', (d) => { adicionarLog(d); });
+    
+    socket.on('erro_login', (msg) => { setErroLogin(msg); if (audioError.current) audioError.current.play().catch(()=>{}); });
     socket.on('atualizar_sala', (l) => { setJogadores(l); const eu = l.find((j) => j.id === socket.id); if (eu) setSouHost(eu.isHost); });
     socket.on('sala_encerrada', () => { localStorage.removeItem('censorizador_session'); window.location.reload(); });
     socket.on('aviso_sala', (d) => setAviso(d));
     socket.on('inicio_preparacao', (d) => { setFase('PREPARACAO'); setMinhaPalavraInicial(d.palavra); setJaEnvieiPreparacao(false); setTextoPreparacao(''); });
     socket.on('status_preparacao', (d) => setStatusPreparacao(d));
+    
     socket.on('nova_rodada', (d) => {
       setFase('SABOTAGEM'); setMeuPapel(d.meuPapel); setInfoRodada({ atual: d.rodadaAtual, total: d.totalRodadas });
       setInputsSabotagem(Array(10).fill('')); setSabotagemEnviada(false); setTentativaDecifrador(''); setDescricaoRecebida(d.descricao || '');
@@ -449,14 +368,10 @@ function App() {
     });
     socket.on('sincronizar_tempo', ({ segundosRestantes }) => setAlvoLocal(Date.now() + segundosRestantes * 1000));
     
-    // --- CORREÇÃO DE SOM: RESULTADO ---
     socket.on('resultado_rodada', (d) => { 
         setFase('RESULTADO'); setResultadoRodada(d); setJogadores(d.ranking); setAlvoLocal(0); 
-        if (d.acertou) {
-            if (audioSuccess.current) { audioSuccess.current.currentTime = 0; audioSuccess.current.play().catch(()=>{}); }
-        } else {
-            if (audioError.current) { audioError.current.currentTime = 0; audioError.current.play().catch(()=>{}); }
-        }
+        if (d.acertou) { if (audioSuccess.current) { audioSuccess.current.currentTime = 0; audioSuccess.current.play().catch(()=>{}); } } 
+        else { if (audioError.current) { audioError.current.currentTime = 0; audioError.current.play().catch(()=>{}); } }
     });
 
     socket.on('fim_de_jogo', () => setFase('FIM'));
@@ -495,29 +410,13 @@ function App() {
     if (fase === 'PREPARACAO') tempoTotalFase = parseInt(configSala.tempos.preparacao);
     else if (fase === 'SABOTAGEM') tempoTotalFase = parseInt(configSala.tempos.sabotagem);
     else if (fase === 'DECIFRANDO') tempoTotalFase = parseInt(configSala.tempos.decifracao);
-    
     const porcentagem = Math.min(100, Math.max(0, (tempoRestante / tempoTotalFase) * 100));
     const corDinamica = porcentagem < 25 ? '#ef4444' : '#afffbf';
-
     return (
-      <div style={{ 
-          position: 'fixed', top: '15px', left: '50%', transform: 'translateX(-50%)', 
-          zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '220px' 
-      }}>
-        <div style={{ 
-            color: corDinamica, fontSize: '24px', fontWeight: 'bold', 
-            textShadow: `0 0 10px ${corDinamica}`, marginBottom: '4px', fontFamily: "'Courier Prime', monospace"
-        }}>
-          {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
-        </div>
-        <div style={{
-            width: '100%', height: '6px', backgroundColor: 'rgba(0, 20, 0, 0.6)',
-            border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '4px', overflow: 'hidden'
-        }}>
-            <div style={{
-                height: '100%', width: `${porcentagem}%`, backgroundColor: corDinamica,
-                boxShadow: `0 0 8px ${corDinamica}`, transition: 'width 0.2s linear, background-color 0.5s ease'
-            }} />
+      <div style={{ position: 'fixed', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '220px' }}>
+        <div style={{ color: corDinamica, fontSize: '24px', fontWeight: 'bold', textShadow: `0 0 10px ${corDinamica}`, marginBottom: '4px', fontFamily: "'Courier Prime', monospace" }}>{Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}</div>
+        <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(0, 20, 0, 0.6)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${porcentagem}%`, backgroundColor: corDinamica, boxShadow: `0 0 8px ${corDinamica}`, transition: 'width 0.2s linear, background-color 0.5s ease' }} />
         </div>
       </div>
     );
@@ -525,7 +424,7 @@ function App() {
 
   const RulesWidget = () => (
     <>
-      <button onClick={() => setExibirRegras(!exibirRegras)} style={styles.helpBtn} title="Protocolos da Missão">?</button>
+      <button onClick={() => setExibirRegras(!exibirRegras)} style={styles.helpBtn} title="Protocolos">?</button>
       <div style={{ ...styles.rulesBox, transform: exibirRegras ? 'scale(1)' : 'scale(0)' }}>
         <div style={{ borderBottom: '1px dashed #afffbf', paddingBottom: '10px', marginBottom: '10px' }}>
           <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize:'16px' }}>📂 PROTOCOLOS</h3>
@@ -536,16 +435,58 @@ function App() {
           <li style={{ marginBottom: '8px' }}><strong>3. ✂️ SABOTADOR:</strong> Censura palavras para quebrar o texto.</li>
           <li style={{ marginBottom: '8px' }}><strong>4. 🧩 DECIFRADOR:</strong> Tenta adivinhar a palavra original.</li>
         </ul>
-        <div style={{ marginTop: '10px', fontSize: '10px', fontStyle: 'italic', textAlign: 'center', color: '#ff6666' }}>
-          "CONFIE EM NINGUÉM."
-        </div>
       </div>
     </>
+  );
+
+  // --- NOVA SIDEBAR JOGADORES (FLUTUANTE À ESQUERDA) ---
+  const SidebarJogadores = () => (
+    <div style={styles.sidebarContainer}>
+      <div style={{fontSize:'9px', color:'#555', textAlign:'center', marginBottom:'5px'}}>AGENTES</div>
+      {jogadores.map((j) => (
+        <div key={j.id} style={styles.sidebarItem} onContextMenu={(e) => handleContextMenuJogador(e, j)} title={souHost ? "Clique direito para banir" : j.nome}>
+          <div style={{
+              ...styles.sidebarAvatar,
+              borderColor: j.id === socket.id ? '#afffbf' : '#444',
+              boxShadow: j.id === socket.id ? '0 0 10px #afffbf' : 'none'
+          }}>
+            {j.foto ? <img src={j.foto} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'24px', lineHeight:'46px', display:'block', textAlign:'center', color:'#ccc'}}>🕵️</span>}
+          </div>
+          {/* Badge de papel se houver */}
+          {j.papel && (
+              <div style={{
+                  ...styles.sidebarRoleBadge,
+                  background: j.papel === 'CIFRADOR' ? '#22c55e' : j.papel === 'DECIFRADOR' ? '#3b82f6' : '#ef4444',
+                  color: 'white', padding: '2px 4px', borderRadius: '4px', fontWeight: 'bold'
+              }}>
+                  {j.papel === 'CIFRADOR' ? '🖊️' : j.papel === 'DECIFRADOR' ? '🔍' : '✂️'}
+              </div>
+          )}
+          <div style={styles.sidebarName}>{j.nome}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // --- NOVOS LOGS DE SISTEMA (FLUTUANTE INFERIOR ESQ) ---
+  const SystemLogs = () => (
+    <div style={styles.logsContainer}>
+        {logsSistema.map((log) => (
+            <div key={log.id} style={{
+                ...styles.logItem,
+                borderLeftColor: log.tipo === 'ban' ? '#ef4444' : log.tipo === 'sucesso' ? '#22c55e' : '#eab308',
+                color: log.tipo === 'ban' ? '#ef4444' : '#fff'
+            }}>
+                {`> ${log.msg}`}
+            </div>
+        ))}
+    </div>
   );
 
   const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ff6666' : '#86efac'; return (<div style={{ position: 'fixed', top: '60px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '10px', zIndex: 100 }}>{aviso.msg}</div>); };
 
   const renderContent = () => {
+    // 1. TELA DE LOGIN
     if (!entrou) {
       const emMenu = modoLogin === 'MENU';
       const emCriar = modoLogin === 'CRIAR';
@@ -566,8 +507,10 @@ function App() {
           {emCriar && (
             <div>
               <h3 style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: '10px' }}>CONFIGURAR MISSÃO</h3>
+              
               <input placeholder="CODINOME" value={configSala.twitchAuth ? '(Via Twitch)' : nome} disabled={configSala.twitchAuth} onChange={(e) => setNome(e.target.value)} style={styles.inputCRT} />
               <input placeholder="SENHA" type="text" value={configSala.twitchAuth ? '' : senha} disabled={configSala.twitchAuth} onChange={(e) => setSenha(e.target.value)} style={styles.inputCRT} />
+
               <div style={{ margin: '20px 0', textAlign: 'left', color: '#ccc' }}>
                   <label style={{ fontSize: '12px', letterSpacing: '1px' }}>CICLOS DE RODADAS:</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -575,15 +518,18 @@ function App() {
                       <span style={{ fontWeight: 'bold' }}>{configSala.numCiclos}</span>
                   </div>
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', textAlign: 'left', color: '#ccc' }}>
                   <div><label style={{ fontSize: '10px' }}>PREPARAÇÃO (s)</label><input type="number" value={configSala.tempos.preparacao} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, preparacao: e.target.value}})} style={styles.inputCRT_Small} /></div>
                   <div><label style={{ fontSize: '10px' }}>SABOTAGEM (s)</label><input type="number" value={configSala.tempos.sabotagem} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, sabotagem: e.target.value}})} style={styles.inputCRT_Small} /></div>
                   <div style={{ gridColumn: 'span 2' }}><label style={{ fontSize: '10px' }}>DECIFRAÇÃO (s)</label><input type="number" value={configSala.tempos.decifracao} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, decifracao: e.target.value}})} style={styles.inputCRT_Small} /></div>
               </div>
+
               <div style={{ textAlign: 'left', margin: '20px 0', fontSize: '12px', color: '#999' }}>
                 <label style={{ display: 'block', marginBottom: '5px' }}><input type="checkbox" checked={configSala.twitchAuth} onChange={(e) => setConfigSala({ ...configSala, twitchAuth: e.target.checked })} /> Usar Twitch Auth</label>
                 <label style={{ display: 'block' }}><input type="checkbox" checked={configSala.streamerMode} onChange={(e) => setConfigSala({ ...configSala, streamerMode: e.target.checked })} /> Modo Streamer</label>
               </div>
+
               <button onClick={acaoCriarSala} style={{...styles.btnPrimary, background: configSala.twitchAuth ? '#7c3aed' : styles.btnPrimary.background }}>{configSala.twitchAuth ? 'LOGAR TWITCH & CRIAR' : 'CRIAR SALA'}</button>
               <button onClick={() => setModoLogin('MENU')} style={styles.btnSecondary}>VOLTAR</button>
             </div>
@@ -650,8 +596,7 @@ function App() {
                   <div style={styles.paper}>
                     <div style={styles.folderTab}>RELATÓRIO //</div>
                     <textarea 
-                      rows={10} autoFocus maxLength={200}
-                      placeholder="Datilografe a descrição aqui..." 
+                      rows={10} autoFocus maxLength={200} placeholder="Datilografe a descrição aqui..." 
                       value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} 
                       style={styles.paperTextArea} 
                     />
@@ -713,7 +658,16 @@ function App() {
     return <div style={{ color: 'red' }}>ERRO DE FASE: {fase}</div>;
   };
 
-  return <GlobalCRT><RulesWidget />{renderContent()}<AvisoToast /></GlobalCRT>;
+  return (
+    <GlobalCRT>
+        {menuBan.visivel && <div style={{...styles.menuBan, top:menuBan.y, left:menuBan.x}} onClick={confirmarBan}>BANIR AGENTE <br/>{menuBan.jogadorNome}</div>}
+        <RulesWidget />
+        {entrou && fase !== 'LOBBY' && fase !== 'FIM' && <SidebarJogadores />}
+        <SystemLogs />
+        {renderContent()}
+        <AvisoToast />
+    </GlobalCRT>
+  );
 }
 
 export default App;
