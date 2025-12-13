@@ -14,270 +14,233 @@ const socket = io(
 
 // --- ESTILOS ---
 const styles = {
-  // FUNDO GERAL (A MESA)
+  // O CONTAINER PRINCIPAL AGORA É A PRÓPRIA TELA
   mainWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
     minHeight: '100vh',
     width: '100%',
     fontFamily: "'Courier Prime', 'Courier New', monospace",
-    color: '#e5f5d0',
-    backgroundColor: '#100c08', // Escureci um pouco para destacar o brilho
-    backgroundImage:
-      'radial-gradient(circle at center, #2b1d0e 0%, #0d0905 70%, #000 100%)',
-    boxSizing: 'border-box',
-    padding: '0', // Sem padding para permitir full screen real se precisar
-    overflow: 'hidden', 
+    color: '#e0e0e0', // Texto quase branco (mais legível)
+    backgroundColor: '#0a0a0a', // Fundo quase preto
+    // Um gradiente sutil de fundo para não ser chapado
+    backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #000 90%)',
+    overflowX: 'hidden',
+    overflowY: 'auto', // Scroll na página inteira
   },
 
-  // O HARDWARE (CAIXA DO MONITOR)
-  monitorWrapper: {
-    position: 'relative',
-    // Reduzi o padding drasticamente para a tela ocupar mais espaço
-    padding: '15px 15px 50px 15px', 
-    background:
-      'linear-gradient(145deg, #1f1b16 0%, #0a0806 60%, #000 100%)',
-    borderRadius: '30px', // Cantos mais arredondados
-    boxShadow:
-      '0 50px 150px rgba(0,0,0,1), 0 0 0 2px #0a0806, inset 0 0 20px rgba(0,0,0,0.8)',
-    maxWidth: '98%',
-    width: 'auto',
-  },
-
-  monitorBezel: {
-    padding: '8px', // Borda fina
-    background: '#111',
-    borderRadius: '24px', // Segue a curva da tela
-    boxShadow: 'inset 0 0 10px #000',
-  },
-
-  // A TELA DE VIDRO (AGORA MAIOR E CURVADA)
-  monitorScreen: {
-    width: '900px',
-    maxWidth: '92vw',
-    height: '600px',
-    maxHeight: '80vh',
-    background:
-      'radial-gradient(circle at 50% 50%, #243a29 0%, #0f1812 50%, #020502 95%)',
-    // Borda arredondada para simular o tubo
-    borderRadius: '20px', 
-    // Truque para o efeito CURVADO (Sombra interna pesada nas bordas)
-    boxShadow:
-      'inset 0 0 80px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,1)', 
-    position: 'relative',
-    overflow: 'hidden', 
-    display: 'flex',
-    flexDirection: 'column',
-    border: '2px solid #1a2f20'
-  },
-
-  // CONTEÚDO ROLÁVEL
-  screenContent: {
-    flex: 1,
+  // CONTAINER DE CONTEÚDO (Para não ficar tudo esticado nas bordas)
+  contentContainer: {
+    maxWidth: '800px',
     width: '100%',
-    padding: '30px',
-    overflowY: 'auto',
-    boxSizing: 'border-box',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#1d5a32 #050e07',
+    margin: '0 auto',
+    padding: '40px 20px',
+    position: 'relative',
+    zIndex: 5, // Fica acima dos efeitos CRT
     display: 'flex',
     flexDirection: 'column',
-    // Adiciona um leve brilho (glow) em todo o texto para parecer fósforo
-    textShadow: '0 0 2px rgba(175, 255, 191, 0.4)', 
-    position: 'relative',
-    zIndex: 5
+    alignItems: 'center',
+    minHeight: '100vh', // Garante centralização vertical se pouco conteúdo
+    justifyContent: 'center' 
   },
 
-  // EFEITOS VISUAIS CRT
+  // --- EFEITOS CRT SUAVES (OVERLAYS) ---
+  
+  // Linhas de varredura (Scanlines) - Mais leves
   scanlines: {
     pointerEvents: 'none',
-    position: 'absolute',
-    inset: 0,
-    // Linhas mais finas e densas
-    backgroundImage:
-      'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))',
-    backgroundSize: '100% 2px, 3px 100%',
+    position: 'fixed', // Fixed para cobrir a tela mesmo com scroll
+    top: 0, left: 0, width: '100%', height: '100%',
+    background: 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2))',
+    backgroundSize: '100% 4px',
     zIndex: 10,
-    opacity: 0.6,
+    opacity: 0.6 // Bem sutil
   },
 
-  // Reflexo de Vidro Curvo (A "Bolha")
-  glassHighlight: {
+  // Vinheta (Cantos escuros)
+  vignette: {
     pointerEvents: 'none',
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    // Gradiente radial que simula o reflexo da sala no vidro curvo
-    background:
-      'radial-gradient(circle at 50% -20%, rgba(255,255,255,0.08) 0%, transparent 40%)',
-    zIndex: 12,
-    borderRadius: '20px',
-    boxShadow: 'inset 0 0 50px rgba(0,0,0,0.5)' // Reforça a borda escura
-  },
-
-  // Cintilação da tela (Flicker)
-  flickerOverlay: {
-    pointerEvents: 'none',
-    position: 'absolute',
-    inset: 0,
-    background: 'rgba(52, 255, 159, 0.02)',
+    position: 'fixed',
+    top: 0, left: 0, width: '100%', height: '100%',
+    background: 'radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)',
     zIndex: 11,
-    animation: 'flicker 0.15s infinite',
   },
 
-  // HARDWARE INFERIOR
-  consoleBottom: {
-    position: 'absolute',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    bottom: '-30px', // Mais perto da tela
-    width: '380px',
-    height: '70px',
-    background:
-      'linear-gradient(180deg, #1f1b16 0%, #0a0806 100%)',
-    borderRadius: '0 0 20px 20px',
-    boxShadow:
-      '0 15px 30px rgba(0,0,0,0.9), inset 0 2px 5px rgba(255,255,255,0.05)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    padding: '0 20px',
-    zIndex: 0,
-    borderTop: '1px solid #000'
-  },
-  consoleKnob: { width: '24px', height: '24px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 20%, #666 0%, #111 100%)', boxShadow: '0 2px 4px #000' },
-  consoleLamp: { width: '10px', height: '10px', borderRadius: '50%', background: '#fbbf24', boxShadow: '0 0 8px #fbbf24' },
-
-  // --- UI ELEMENTS ---
-  
-  folderTab: {
-    position: 'absolute', top: '-28px', left: '0',
-    width: '160px', height: '30px',
-    backgroundColor: '#f0e6d2',
-    borderTop: '1px solid #e0d0b0', borderLeft: '1px solid #e0d0b0', borderRight: '1px solid #b0a080',
-    borderRadius: '6px 6px 0 0',
-    display: 'flex', alignItems: 'center', paddingLeft: '15px',
-    fontSize: '11px', fontWeight: 'bold', color: '#8a7a60', letterSpacing: '1px',
-    boxShadow: 'inset 0 10px 10px -10px rgba(255,255,255,0.8)',
+  // Brilho/Glow no texto (Dá a sensação de luz emitida)
+  textGlow: {
+    textShadow: '0 0 4px rgba(255, 255, 255, 0.4)'
   },
 
+  // --- ELEMENTOS DE UI ---
+
+  // Logo (Sem filtro verde, apenas brilho)
+  logoHero: {
+    width: '100%', 
+    maxWidth: '450px', 
+    marginBottom: '30px',
+    // Filtro para dar brilho na imagem original
+    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3)) contrast(1.1) brightness(1.1)',
+    animation: 'float 6s ease-in-out infinite'
+  },
+
+  // Inputs Modernos/Retrô
   inputCRT: {
-    padding: '12px 15px', margin: '8px 0', fontSize: '18px',
-    color: '#d5ffd9', backgroundColor: 'rgba(0, 30, 10, 0.6)',
-    border: '1px solid rgba(156, 253, 177, 0.3)',
-    width: '100%', fontFamily: "'Courier Prime', monospace", fontWeight: 600,
-    boxSizing: 'border-box', outline: 'none', textTransform: 'uppercase', letterSpacing: '2px',
-    boxShadow: '0 0 10px rgba(0,0,0,0.3)'
+    padding: '15px',
+    margin: '10px 0',
+    fontSize: '18px',
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)', // Fundo translúcido
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    width: '100%',
+    fontFamily: "'Courier Prime', monospace",
+    fontWeight: 600,
+    boxSizing: 'border-box',
+    outline: 'none',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    borderRadius: '4px',
+    transition: 'all 0.3s ease'
   },
 
+  // Inputs menores para configuração
   inputCRT_Small: {
-    padding: '8px', margin: '0', fontSize: '16px',
-    color: '#d5ffd9', backgroundColor: 'rgba(0, 30, 10, 0.6)',
-    border: '1px solid rgba(156, 253, 177, 0.3)',
-    width: '100%', fontFamily: "inherit", fontWeight: 600,
-    boxSizing: 'border-box', outline: 'none', textAlign: 'center'
+    padding: '8px',
+    margin: '0',
+    fontSize: '16px',
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    width: '100%',
+    fontFamily: "inherit",
+    fontWeight: 600,
+    boxSizing: 'border-box',
+    outline: 'none',
+    textAlign: 'center',
+    borderRadius: '4px'
   },
 
-  inputPaper: {
-    padding: '10px', margin: '8px 0', fontSize: '18px',
-    color: '#222', backgroundColor: 'rgba(255,255,255,0.5)',
-    border: 'none', borderBottom: '2px dashed #666',
-    width: '100%', fontFamily: "inherit", fontWeight: 'bold', outline: 'none'
+  // Botões Coloridos
+  btnPrimary: {
+    padding: '18px 30px',
+    width: '100%',
+    // Gradiente sutil
+    background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)', 
+    color: '#fff',
+    border: '1px solid #60a5fa',
+    fontFamily: "inherit",
+    fontWeight: 800,
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    fontSize: '16px',
+    cursor: 'pointer',
+    marginTop: '20px',
+    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
+    borderRadius: '2px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+    transition: 'transform 0.1s'
   },
 
-  btnCRT: {
-    padding: '15px 20px', width: '100%',
-    backgroundColor: 'rgba(12, 40, 20, 0.95)',
-    border: '1px solid #afffbf', color: '#e5ffe0',
-    fontFamily: "inherit", fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
-    fontSize: '16px', cursor: 'pointer', marginTop: '15px',
-    boxShadow: '0 0 15px rgba(0,255,150,0.15)', transition: 'all 0.1s',
-    textShadow: '0 0 5px rgba(175, 255, 191, 0.5)'
-  },
-  
-  btnCRTSecondary: {
-    backgroundColor: 'transparent',
-    borderColor: '#4a7a55',
-    color: '#9ccfa8',
-    boxShadow: 'none',
-    fontSize: '14px'
+  btnSecondary: {
+    padding: '15px',
+    width: '100%',
+    background: 'transparent',
+    color: '#aaa',
+    border: '1px solid #444',
+    fontFamily: "inherit",
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    fontSize: '14px',
+    cursor: 'pointer',
+    marginTop: '10px',
+    borderRadius: '2px',
+    transition: 'all 0.2s'
   },
 
-  agentCardCRT: {
-    backgroundColor: 'rgba(0, 20, 5, 0.8)',
-    color: '#afffbf',
-    padding: '10px',
-    width: '110px',
+  // Cards dos Jogadores
+  agentCard: {
+    backgroundColor: 'rgba(20, 20, 20, 0.8)',
+    backdropFilter: 'blur(5px)', // Efeito vidro fosco
+    color: '#fff',
+    padding: '15px',
+    width: '120px',
     margin: '10px',
-    border: '1px solid #4a7a55',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    border: '1px solid #333',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     fontSize: '12px',
-    boxShadow: '0 0 10px rgba(0,255,150,0.1)',
-    position: 'relative'
+    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+    borderRadius: '8px'
   },
   
-  agentPhotoCRT: {
-    width:'60px', height:'60px', background:'#000', marginBottom:'5px', overflow:'hidden', border:'1px solid #4a7a55',
-    filter: 'grayscale(100%) sepia(100%) hue-rotate(90deg) saturate(1.5) brightness(0.9) contrast(1.2)'
+  agentPhoto: {
+    width:'60px', height:'60px', 
+    background:'#222', marginBottom:'10px', 
+    overflow:'hidden', borderRadius:'50%', 
+    border:'2px solid #555'
+  },
+
+  // Pasta de Papel (Mantida para o jogo, mas mais limpa)
+  paper: {
+    backgroundColor: '#f5f5f5',
+    color: '#111', // Texto preto no papel
+    padding: '40px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+    width: '100%',
+    margin: '20px auto',
+    position: 'relative',
+    transform: 'rotate(-1deg)', // Leve inclinação
+    borderRadius: '2px'
+  },
+
+  folderTab: {
+    position: 'absolute', top: '-25px', left: '0',
+    width: '140px', height: '30px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '5px 5px 0 0',
+    display: 'flex', alignItems: 'center', paddingLeft: '15px',
+    fontSize: '10px', fontWeight: 'bold', color: '#666', letterSpacing: '1px',
   },
 
   navBar: {
-    display: 'flex', justifyContent: 'space-between', marginBottom: '20px',
-    borderBottom: '1px solid rgba(0,255,150,0.2)', paddingBottom: '10px',
-    flexShrink: 0
-  },
-
-  logoCRT: {
-    width: '60%', maxWidth: '350px', margin: '0 auto 30px auto',
-    filter: 'grayscale(100%) sepia(100%) hue-rotate(90deg) saturate(2) brightness(0.9) contrast(1.1) drop-shadow(0 0 8px rgba(0,255,150,0.6))',
-    opacity: 0.95
-  },
-
-  // Pasta (usada em algumas fases)
-  paper: {
-    backgroundColor: '#f0e6d2',
-    backgroundImage: 'linear-gradient(to bottom, #fdfbf7 0%, #f0e6d2 100%)',
-    padding: '30px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
-    maxWidth: '100%', width: '100%', margin: '0 auto 20px auto',
-    border: '1px solid #c0b090', position: 'relative', borderRadius: '2px', color: '#1a1a1a', 
-  },
+    position: 'absolute',
+    top: 0, left: 0, width: '100%',
+    display: 'flex', justifyContent: 'space-between',
+    padding: '15px 30px',
+    boxSizing: 'border-box',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(0,0,0,0.3)',
+    zIndex: 20
+  }
 };
 
-// COMPONENTE: ESTRUTURA DO MONITOR
-const MonitorFrame = ({ children }) => (
+// COMPONENTE: ESTRUTURA GLOBAL (TELA INTEIRA)
+const GlobalCRT = ({ children }) => (
   <div style={styles.mainWrapper}>
-    <div style={styles.monitorWrapper}>
-      <div style={styles.monitorBezel}>
-        <div style={styles.monitorScreen}>
-          {/* Efeitos de Vidro e CRT */}
-          <div style={styles.glassHighlight} />
-          <div style={styles.vignette} />
-          <div style={styles.scanlines} />
-          <div style={styles.flickerOverlay} />
-          
-          <div style={styles.screenContent}>{children}</div>
-        </div>
-      </div>
-      <div style={styles.consoleBottom}>
-        <div style={styles.consoleKnob} />
-        <div style={{width: '80px', height: '15px', background: '#111', borderRadius: '4px', border: '1px solid #333'}}></div>
-        <div style={styles.consoleLamp} />
-      </div>
-    </div>
+    {/* Efeitos Globais */}
+    <div style={styles.scanlines} />
+    <div style={styles.vignette} />
     
-    {/* Animação CSS inline para o flicker */}
+    {/* Container Centralizado */}
+    <div style={styles.contentContainer}>
+        {children}
+    </div>
+
+    {/* Animação Float para Logo */}
     <style>{`
-      @keyframes flicker {
-        0% { opacity: 0.97; }
-        50% { opacity: 1; }
-        100% { opacity: 0.98; }
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
       }
-      @keyframes pulse {
-        0% { opacity: 0.6; }
-        50% { opacity: 1; }
-        100% { opacity: 0.6; }
-      }
+      /* Hover effects */
+      button:hover { opacity: 0.9; transform: translateY(-1px); }
+      button:active { transform: translateY(1px); }
+      
+      /* Scrollbar bonita */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #111; }
+      ::-webkit-scrollbar-thumb { background: #444; borderRadius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #666; }
     `}</style>
   </div>
 );
@@ -480,82 +443,83 @@ function App() {
 
   const TopBar = () => (
     <div style={styles.navBar}>
-      <div style={{ color: '#afffbf', fontSize: '12px', letterSpacing: '1px' }}>CONFIDENCIAL // OPERAÇÃO {sala}</div>
+      <div style={{ color: '#aaa', fontSize: '12px', letterSpacing: '1px' }}>CONFIDENCIAL // OPERAÇÃO {sala}</div>
       <div style={{ display: 'flex', gap: '15px' }}>
-        <button onClick={sairDaSala} style={{ background: 'transparent', border: 'none', color: '#ffb3b3', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit', textTransform: 'uppercase' }}>SAIR [X]</button>
-        <button onClick={() => setModoStreamerLocal(!modoStreamerLocal)} style={{ background: 'transparent', border: 'none', color: '#afffbf', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit', textTransform: 'uppercase' }}>{modoStreamerLocal ? 'MODO STREAMER: ON' : 'MODO STREAMER: OFF'}</button>
+        <button onClick={sairDaSala} style={{ background: 'transparent', border: 'none', color: '#ff6666', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit', textTransform: 'uppercase' }}>SAIR [X]</button>
+        <button onClick={() => setModoStreamerLocal(!modoStreamerLocal)} style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit', textTransform: 'uppercase' }}>{modoStreamerLocal ? 'MODO STREAMER: ON' : 'MODO STREAMER: OFF'}</button>
       </div>
     </div>
   );
 
   const Timer = () => (
-    <div style={{ position: 'absolute', top: '10px', right: '15px', color: tempoRestante < 10 ? '#ffb3b3' : '#e5f5d0', fontSize: '18px', fontWeight: 'bold', textShadow: '0 0 5px currentColor', zIndex: 50 }}>
-      ⏱️ {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
+    <div style={{ position: 'absolute', top: '15px', right: '30px', color: tempoRestante < 10 ? '#ef4444' : '#fff', fontSize: '20px', fontWeight: 'bold', textShadow: '0 0 10px currentColor', zIndex: 50 }}>
+      {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
     </div>
   );
 
-  const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ffb3b3' : '#afffbf'; return (<div style={{ position: 'absolute', top: '50px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '5px', zIndex: 100 }}>{aviso.msg}</div>); };
+  const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ff6666' : '#86efac'; return (<div style={{ position: 'absolute', top: '60px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '10px', zIndex: 100 }}>{aviso.msg}</div>); };
 
   const renderContent = () => {
+    // 1. TELA DE LOGIN
     if (!entrou) {
       const emMenu = modoLogin === 'MENU';
       const emCriar = modoLogin === 'CRIAR';
       const emEntrar = modoLogin === 'ENTRAR';
 
       return (
-        <div style={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
-          <img src={logoImage} style={styles.logoCRT} />
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '500px' }}>
+          <img src={logoImage} style={styles.logoHero} />
 
           {emMenu && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-              {sessaoSalva && <button onClick={acaoReconectar} style={styles.btnCRT}>VOLTAR PARA {sessaoSalva.roomId}</button>}
-              <button onClick={() => setModoLogin('CRIAR')} style={styles.btnCRT}>INICIAR NOVA OPERAÇÃO</button>
-              <button onClick={() => setModoLogin('ENTRAR')} style={{ ...styles.btnCRT, ...styles.btnCRTSecondary }}>ACESSAR OPERAÇÃO EXISTENTE</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {sessaoSalva && <button onClick={acaoReconectar} style={{...styles.btnPrimary, background: 'linear-gradient(180deg, #16a34a 0%, #15803d 100%)'}}>VOLTAR PARA {sessaoSalva.roomId}</button>}
+              <button onClick={() => setModoLogin('CRIAR')} style={styles.btnPrimary}>INICIAR NOVA OPERAÇÃO</button>
+              <button onClick={() => setModoLogin('ENTRAR')} style={styles.btnSecondary}>ACESSAR OPERAÇÃO EXISTENTE</button>
             </div>
           )}
 
           {emCriar && (
-            <div style={{ width: '100%', maxWidth: '400px', margin: '0 auto' }}>
-              <h3 style={{ color: '#afffbf', borderBottom: '1px solid #afffbf' }}>CONFIGURAR MISSÃO</h3>
+            <div>
+              <h3 style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: '10px' }}>CONFIGURAR MISSÃO</h3>
               
               <input placeholder="CODINOME" value={configSala.twitchAuth ? '(Via Twitch)' : nome} disabled={configSala.twitchAuth} onChange={(e) => setNome(e.target.value)} style={styles.inputCRT} />
               <input placeholder="SENHA" type="text" value={configSala.twitchAuth ? '' : senha} disabled={configSala.twitchAuth} onChange={(e) => setSenha(e.target.value)} style={styles.inputCRT} />
 
-              <div style={{ margin: '15px 0', textAlign: 'left', color: '#afffbf' }}>
+              <div style={{ margin: '20px 0', textAlign: 'left', color: '#ccc' }}>
                   <label style={{ fontSize: '12px', letterSpacing: '1px' }}>CICLOS DE RODADAS:</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input type="range" min="1" max="5" value={configSala.numCiclos} onChange={e => setConfigSala({...configSala, numCiclos: parseInt(e.target.value)})} style={{ flex: 1, accentColor: '#afffbf' }} />
+                      <input type="range" min="1" max="5" value={configSala.numCiclos} onChange={e => setConfigSala({...configSala, numCiclos: parseInt(e.target.value)})} style={{ flex: 1 }} />
                       <span style={{ fontWeight: 'bold' }}>{configSala.numCiclos}</span>
                   </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', textAlign: 'left', color: '#afffbf' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', textAlign: 'left', color: '#ccc' }}>
                   <div><label style={{ fontSize: '10px' }}>PREPARAÇÃO (s)</label><input type="number" value={configSala.tempos.preparacao} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, preparacao: e.target.value}})} style={styles.inputCRT_Small} /></div>
                   <div><label style={{ fontSize: '10px' }}>SABOTAGEM (s)</label><input type="number" value={configSala.tempos.sabotagem} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, sabotagem: e.target.value}})} style={styles.inputCRT_Small} /></div>
                   <div style={{ gridColumn: 'span 2' }}><label style={{ fontSize: '10px' }}>DECIFRAÇÃO (s)</label><input type="number" value={configSala.tempos.decifracao} onChange={e => setConfigSala({...configSala, tempos: {...configSala.tempos, decifracao: e.target.value}})} style={styles.inputCRT_Small} /></div>
               </div>
 
-              <div style={{ textAlign: 'left', margin: '15px 0', fontSize: '12px', color: '#9ae79f' }}>
-                <label style={{ display: 'block' }}><input type="checkbox" checked={configSala.twitchAuth} onChange={(e) => setConfigSala({ ...configSala, twitchAuth: e.target.checked })} /> Usar Twitch Auth</label>
+              <div style={{ textAlign: 'left', margin: '20px 0', fontSize: '12px', color: '#999' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}><input type="checkbox" checked={configSala.twitchAuth} onChange={(e) => setConfigSala({ ...configSala, twitchAuth: e.target.checked })} /> Usar Twitch Auth</label>
                 <label style={{ display: 'block' }}><input type="checkbox" checked={configSala.streamerMode} onChange={(e) => setConfigSala({ ...configSala, streamerMode: e.target.checked })} /> Modo Streamer</label>
               </div>
 
-              <button onClick={acaoCriarSala} style={styles.btnCRT}>{configSala.twitchAuth ? 'LOGAR TWITCH & CRIAR' : 'CRIAR SALA'}</button>
-              <button onClick={() => setModoLogin('MENU')} style={{ background: 'transparent', border: 'none', color: '#9ae79f', marginTop: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>VOLTAR</button>
+              <button onClick={acaoCriarSala} style={{...styles.btnPrimary, background: configSala.twitchAuth ? '#7c3aed' : styles.btnPrimary.background }}>{configSala.twitchAuth ? 'LOGAR TWITCH & CRIAR' : 'CRIAR SALA'}</button>
+              <button onClick={() => setModoLogin('MENU')} style={styles.btnSecondary}>VOLTAR</button>
             </div>
           )}
 
           {emEntrar && (
-            <div style={{ width: '100%', maxWidth: '400px', margin: '0 auto' }}>
-              <h3 style={{ color: '#afffbf', borderBottom: '1px solid #afffbf' }}>ACESSAR SISTEMA</h3>
+            <div>
+              <h3 style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: '10px' }}>ACESSAR SISTEMA</h3>
               <input placeholder="CÓDIGO DA SALA" value={sala} onChange={(e) => setSala(e.target.value.toUpperCase())} style={{ ...styles.inputCRT, textAlign: 'center', fontSize: '24px', letterSpacing: '5px' }} />
               {!salaEhTwitch && (<><input placeholder="SEU CODINOME" onChange={(e) => setNome(e.target.value)} style={styles.inputCRT} /><input placeholder="SENHA DA SALA" type="text" onChange={(e) => setSenha(e.target.value)} style={styles.inputCRT} /></>)}
-              {salaEhTwitch && (<p style={{ color: '#bd93f9', fontSize: '12px' }}>🔒 ESTA SALA REQUER LOGIN TWITCH</p>)}
-              <button onClick={acaoEntrarSala} style={{ ...styles.btnCRT, background: salaEhTwitch ? '#bd93f9' : styles.btnCRT.backgroundColor, color: salaEhTwitch ? '#000' : '#e5ffe0', borderColor: salaEhTwitch ? '#bd93f9' : '#afffbf' }}>{salaEhTwitch ? 'LOGAR COM TWITCH' : 'ENTRAR NA SALA'}</button>
-              <button onClick={() => setModoLogin('MENU')} style={{ background: 'transparent', border: 'none', color: '#9ae79f', marginTop: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>VOLTAR</button>
+              {salaEhTwitch && (<p style={{ color: '#a78bfa', fontSize: '12px' }}>🔒 ESTA SALA REQUER LOGIN TWITCH</p>)}
+              <button onClick={acaoEntrarSala} style={{ ...styles.btnPrimary, background: salaEhTwitch ? '#7c3aed' : styles.btnPrimary.background }}>{salaEhTwitch ? 'LOGAR COM TWITCH' : 'ENTRAR NA SALA'}</button>
+              <button onClick={() => setModoLogin('MENU')} style={styles.btnSecondary}>VOLTAR</button>
             </div>
           )}
-          {erroLogin && <div style={{ color: '#ffb3b3', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px' }}>{erroLogin}</div>}
+          {erroLogin && <div style={{ color: '#ff6666', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '4px' }}>{erroLogin}</div>}
         </div>
       );
     }
@@ -564,28 +528,29 @@ function App() {
       return (
         <div>
           <TopBar />
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <h2 style={{ margin: '0', color: '#afffbf', fontSize: '32px', letterSpacing: '5px', textShadow: '0 0 10px #afffbf' }}>OPERAÇÃO: {sala}</h2>
-            <p style={{ fontSize: '14px', color: '#9ae79f', margin: '10px 0 20px 0', letterSpacing: '2px' }}>// AGENTES CONECTADOS AO TERMINAL //</p>
-            <button onClick={copiarLinkConvite} style={{ ...styles.btnCRT, ...styles.btnCRTSecondary, width: 'auto', padding: '8px 15px', fontSize: '12px' }}>{linkCopiado ? 'LINK COPIADO! ✅' : '🔗 COPIAR CÓDIGO DE ACESSO'}</button>
+          <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '40px' }}>
+            <h2 style={{ margin: '0', color: '#fff', fontSize: '42px', letterSpacing: '5px', textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>OPERAÇÃO: {sala}</h2>
+            <p style={{ fontSize: '14px', color: '#888', margin: '15px 0', letterSpacing: '2px' }}>// AGENTES CONECTADOS //</p>
+            <button onClick={copiarLinkConvite} style={{ ...styles.btnSecondary, width: 'auto', padding: '10px 20px', fontSize: '12px', borderRadius: '20px' }}>{linkCopiado ? 'LINK COPIADO! ✅' : '🔗 COPIAR CÓDIGO'}</button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center', marginBottom: '50px' }}>
             {jogadores.map((j) => (
-              <div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} style={styles.agentCardCRT}>
-                <div style={styles.agentPhotoCRT}>{j.foto ? <img src={j.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '30px', lineHeight: '50px', display: 'block', textAlign: 'center', color: '#afffbf' }}>🕵️</span>}</div>
+              <div key={j.id} onContextMenu={(e) => handleContextMenuJogador(e, j)} style={styles.agentCard}>
+                <div style={styles.agentPhoto}>{j.foto ? <img src={j.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '30px', lineHeight: '60px', display: 'block', textAlign: 'center' }}>🕵️</span>}</div>
                 <strong style={{ fontSize: '12px', textTransform: 'uppercase', marginTop: '5px' }}>{j.nome}</strong>
-                <span style={{ fontSize: '10px', color: '#9ae79f' }}>{j.pontos} PTS</span>
-                {j.isHost && <span style={{ color: '#ffb3b3', fontWeight: 'bold', fontSize: '10px', marginTop: '5px' }}>DIRETOR</span>}
+                <span style={{ fontSize: '10px', color: '#888' }}>{j.pontos} PTS</span>
+                {j.isHost && <span style={{ color: '#f87171', fontWeight: 'bold', fontSize: '10px', marginTop: '5px' }}>DIRETOR</span>}
               </div>
             ))}
           </div>
           <div style={{ textAlign: 'center' }}>
-            {souHost ? (<button onClick={iniciarJogo} style={{ ...styles.btnCRT, background: 'rgba(19, 83, 36, 0.9)', color: '#afffbf', border: '2px solid #afffbf', boxShadow: '0 0 15px rgba(0,255,150,0.4)', fontSize: '16px', padding: '15px 30px', width: 'auto' }}>INICIAR OPERAÇÃO</button>) : (<p style={{ color: '#afffbf', animation: 'pulse 2s infinite', fontSize: '14px', letterSpacing: '1px' }}>AGUARDANDO O DIRETOR INICIAR O SISTEMA...</p>)}
+            {souHost ? (<button onClick={iniciarJogo} style={{ ...styles.btnPrimary, width: 'auto', padding: '20px 50px', fontSize: '18px', borderRadius: '50px' }}>INICIAR OPERAÇÃO</button>) : (<p style={{ color: '#aaa', animation: 'pulse 2s infinite', fontSize: '14px', letterSpacing: '1px' }}>AGUARDANDO O DIRETOR...</p>)}
           </div>
         </div>
       );
     }
 
+    // --- MANTENDO A PASTA PARA O JOGO ---
     if (fase === 'PREPARACAO') {
       const devoEsconder = (souHost && configRecebida?.streamerMode) || modoStreamerLocal;
       return (
@@ -594,19 +559,22 @@ function App() {
           {!jaEnvieiPreparacao ? (
             <>
               {devoEsconder ? (
-                <div style={{ border: '2px dashed #afffbf', padding: '20px', textAlign: 'center', color: '#afffbf', marginTop: '50px' }}>
-                  <h3>MODO STREAMER ATIVO</h3><p>Abra o painel secreto para ver sua palavra.</p><button onClick={() => setJanelaExternaAberta(true)} style={styles.btnCRT}>ABRIR PAINEL</button>
+                <div style={{ border: '2px dashed #666', padding: '30px', textAlign: 'center', color: '#ccc', marginTop: '100px', borderRadius: '10px' }}>
+                  <h3>MODO STREAMER ATIVO</h3><p>Abra o painel secreto para ver sua palavra.</p><button onClick={() => setJanelaExternaAberta(true)} style={{...styles.btnPrimary, width: 'auto'}}>ABRIR PAINEL</button>
                 </div>
               ) : (
                 <>
-                  <div style={{ background: '#000', color: '#eab308', padding: '10px', textAlign: 'center', border: '1px solid #eab308', marginBottom: '20px' }}>PALAVRA SECRETA: <strong style={{ fontSize: '24px' }}>{minhaPalavraInicial}</strong></div>
-                  <div style={styles.paper}><textarea rows={6} autoFocus placeholder="Descreva a palavra..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ ...styles.inputPaper, background: 'transparent', border: 'none', resize: 'none', fontFamily: '"Courier Prime", monospace' }} /></div>
-                  <button onClick={enviarTextoPreparacao} style={styles.btnCRT}>ENVIAR RELATÓRIO</button>
+                  <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '40px' }}>
+                    <div style={{fontSize:'12px', color:'#888'}}>SUA PALAVRA SECRETA</div>
+                    <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', textShadow: '0 0 10px #fff' }}>{minhaPalavraInicial}</div>
+                  </div>
+                  <div style={styles.paper}><div style={styles.folderTab}>RELATÓRIO //</div><textarea rows={6} autoFocus placeholder="Descreva a palavra..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ ...styles.inputPaper, background: 'transparent', border: 'none', resize: 'none', fontFamily: '"Courier Prime", monospace' }} /></div>
+                  <button onClick={enviarTextoPreparacao} style={styles.btnPrimary}>ENVIAR RELATÓRIO</button>
                 </>
               )}
-              {janelaExternaAberta && <JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '20px', color: '#afffbf', fontFamily: 'monospace', textAlign: 'center' }}><h2>PALAVRA: {minhaPalavraInicial}</h2><textarea value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ width: '100%', height: '200px', background: '#111', color: '#afffbf', border: '1px solid #afffbf' }} /><button onClick={enviarTextoPreparacao} style={{ marginTop: '10px', padding: '10px', width: '100%', cursor: 'pointer' }}>ENVIAR</button></div></JanelaExterna>}
+              {janelaExternaAberta && <JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '20px', color: '#fff', fontFamily: 'monospace', textAlign: 'center' }}><h2>PALAVRA: {minhaPalavraInicial}</h2><textarea value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ width: '100%', height: '200px', background: '#333', color: '#fff', border: '1px solid #555', padding:'10px' }} /><button onClick={enviarTextoPreparacao} style={{ marginTop: '10px', padding: '10px', width: '100%', cursor: 'pointer', background: '#2563eb', color: 'white', border:'none' }}>ENVIAR</button></div></JanelaExterna>}
             </>
-          ) : (<div style={{ textAlign: 'center', marginTop: '100px', color: '#afffbf' }}><h2>RELATÓRIO ENVIADO</h2><p>Aguardando outros agentes ({statusPreparacao.prontos}/{statusPreparacao.total})...</p></div>)}
+          ) : (<div style={{ textAlign: 'center', marginTop: '150px', color: '#aaa' }}><h2>RELATÓRIO ENVIADO</h2><p>Aguardando outros agentes ({statusPreparacao.prontos}/{statusPreparacao.total})...</p></div>)}
         </div>
       );
     }
@@ -615,10 +583,10 @@ function App() {
       return (
         <div>
           <TopBar /><Timer />
-          <div style={{ borderBottom: '1px solid #333', marginBottom: '10px', paddingBottom: '5px', fontSize: '12px', color: '#aaa' }}>ARQUIVO: {meuPapel} | RODADA {infoRodada.atual}/{infoRodada.total}</div>
-          {meuPapel === 'DECIFRADOR' && (<div style={{ textAlign: 'center', marginTop: '80px', color: '#ffb3b3' }}><h1 style={{ fontSize: '40px', border: '4px solid #ffb3b3', display: 'inline-block', padding: '10px' }}>ACESSO NEGADO</h1><p>Você é o Decifrador. Aguarde a interceptação.</p></div>)}
-          {meuPapel === 'CIFRADOR' && (<div style={styles.paper}><div style={styles.folderTab}>ALERTA //</div><h3 style={{ color: '#b91c1c', marginTop: 0 }}>SEU TEXTO ESTÁ SENDO ATACADO:</h3><p style={{ fontSize: '18px' }}>"{descricaoRecebida}"</p></div>)}
-          {meuPapel === 'SABOTADOR' && (<><div style={{ textAlign: 'center', background: '#111', padding: '10px', border: '1px solid #eab308', color: '#eab308', marginBottom: '15px' }}>ALVO: <strong style={{ fontSize: '20px' }}>{dadosRodada?.palavra}</strong></div>{!sabotagemEnviada ? (<div style={styles.paper}><div style={styles.folderTab}>CENSURA //</div>{inputsSabotagem.map((v, i) => (<input key={i} placeholder={`PALAVRA PROIBIDA #${i + 1}`} value={v} onChange={(e) => atualizarInputSabotagem(i, e.target.value)} style={styles.inputPaper} />))}<button onClick={enviarSabotagem} style={{ ...styles.btnCRT, background: '#b91c1c', border: 'none' }}>EXECUTAR CENSURA</button></div>) : (<div style={{ textAlign: 'center', marginTop: '50px', color: '#afffbf' }}><h2>CENSURA APLICADA</h2><p>Aguardando processamento...</p></div>)}</>)}
+          <div style={{ textAlign: 'center', marginBottom: '20px', color: '#888', fontSize: '12px' }}>RODADA {infoRodada.atual}/{infoRodada.total}</div>
+          {meuPapel === 'DECIFRADOR' && (<div style={{ textAlign: 'center', marginTop: '100px', color: '#f87171' }}><h1 style={{ fontSize: '40px', border: '4px solid #f87171', display: 'inline-block', padding: '20px' }}>ACESSO NEGADO</h1><p>Você é o Decifrador. Aguarde.</p></div>)}
+          {meuPapel === 'CIFRADOR' && (<div style={styles.paper}><div style={styles.folderTab}>ALERTA //</div><h3 style={{ color: '#b91c1c', marginTop: 0 }}>SEU TEXTO ESTÁ SOB ATAQUE:</h3><p style={{ fontSize: '20px', lineHeight: '1.5' }}>"{descricaoRecebida}"</p></div>)}
+          {meuPapel === 'SABOTADOR' && (<><div style={{ textAlign: 'center', marginBottom: '20px' }}><div style={{fontSize:'12px', color:'#888'}}>ALVO</div><strong style={{ fontSize: '32px', color:'#fbbf24' }}>{dadosRodada?.palavra}</strong></div>{!sabotagemEnviada ? (<div style={styles.paper}><div style={styles.folderTab}>CENSURA //</div>{inputsSabotagem.map((v, i) => (<input key={i} placeholder={`PALAVRA PROIBIDA #${i + 1}`} value={v} onChange={(e) => atualizarInputSabotagem(i, e.target.value)} style={styles.inputPaper} />))}<button onClick={enviarSabotagem} style={{ ...styles.btnPrimary, background: '#b91c1c', border: 'none' }}>EXECUTAR CENSURA</button></div>) : (<div style={{ textAlign: 'center', marginTop: '100px', color: '#aaa' }}><h2>CENSURA APLICADA</h2><p>Aguardando processamento...</p></div>)}</>)}
         </div>
       );
     }
@@ -626,10 +594,10 @@ function App() {
     if (fase === 'DECIFRANDO') {
       return (
         <div>
-          <TopBar /><Timer /><div style={{ textAlign: 'center', marginBottom: '20px', color: '#afffbf' }}><h2>DECODIFICAÇÃO</h2></div>
-          <div style={styles.paper}><div style={{ position: 'absolute', top: '10px', right: '10px', border: '2px solid black', padding: '2px 5px', fontSize: '10px', transform: 'rotate(-10deg)', opacity: 0.5 }}>CLASSIFIED</div><p style={{ fontSize: '20px', lineHeight: '1.6' }}>{textoCensurado.split(/(\[CENSURADO\])/g).map((parte, i) => parte === '[CENSURADO]' ? (<span key={i} style={{ background: '#111', color: 'transparent', padding: '0 5px' }}>████</span>) : (<span key={i}>{parte}</span>))}</p></div>
-          {meuPapel === 'SABOTADOR' && (<div style={{ marginTop: '20px', textAlign: 'center' }}><p style={{ fontSize: '12px', color: '#aaa' }}>TENTATIVAS DA EQUIPE:</p><div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center' }}>{palavrasSabotadasRodada.map((p, i) => (<span key={i} style={{ background: '#eab308', color: '#000', padding: '2px 6px', fontSize: '11px', borderRadius: '2px' }}>{((souHost && configRecebida?.streamerMode) || modoStreamerLocal) ? '████' : p}</span>))}</div></div>)}
-          {meuPapel === 'DECIFRADOR' ? (<div style={{ marginTop: '20px' }}><input placeholder="QUAL É A PALAVRA?" value={tentativaDecifrador} onChange={(e) => setTentativaDecifrador(e.target.value)} style={styles.inputCRT} autoFocus /><button onClick={enviarDecifracao} style={{ ...styles.btnCRT, background: '#2563eb', border: 'none' }}>ENVIAR RESPOSTA</button></div>) : (<p style={{ textAlign: 'center', color: '#aaa', marginTop: '20px' }}>// AGUARDANDO ANÁLISE DO DECIFRADOR //</p>)}
+          <TopBar /><Timer /><div style={{ textAlign: 'center', marginBottom: '30px', color: '#fff' }}><h2>DECODIFICAÇÃO</h2></div>
+          <div style={styles.paper}><div style={{ position: 'absolute', top: '20px', right: '20px', border: '3px solid #b91c1c', padding: '5px 10px', fontSize: '14px', transform: 'rotate(-15deg)', opacity: 0.7, color: '#b91c1c', fontWeight: 'bold' }}>TOP SECRET</div><p style={{ fontSize: '22px', lineHeight: '1.8' }}>{textoCensurado.split(/(\[CENSURADO\])/g).map((parte, i) => parte === '[CENSURADO]' ? (<span key={i} style={{ background: '#111', color: 'transparent', padding: '0 8px', borderRadius: '4px' }}>████</span>) : (<span key={i}>{parte}</span>))}</p></div>
+          {meuPapel === 'SABOTADOR' && (<div style={{ marginTop: '30px', textAlign: 'center' }}><p style={{ fontSize: '12px', color: '#888' }}>TENTATIVAS DA EQUIPE:</p><div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>{palavrasSabotadasRodada.map((p, i) => (<span key={i} style={{ background: '#fef3c7', color: '#000', padding: '5px 10px', fontSize: '12px', borderRadius: '4px', fontWeight: 'bold' }}>{((souHost && configRecebida?.streamerMode) || modoStreamerLocal) ? '████' : p}</span>))}</div></div>)}
+          {meuPapel === 'DECIFRADOR' ? (<div style={{ marginTop: '30px' }}><input placeholder="QUAL É A PALAVRA?" value={tentativaDecifrador} onChange={(e) => setTentativaDecifrador(e.target.value)} style={styles.inputCRT} autoFocus /><button onClick={enviarDecifracao} style={styles.btnPrimary}>ENVIAR RESPOSTA</button></div>) : (<p style={{ textAlign: 'center', color: '#888', marginTop: '50px' }}>// AGUARDANDO ANÁLISE DO DECIFRADOR //</p>)}
         </div>
       );
     }
@@ -637,9 +605,9 @@ function App() {
     if (fase === 'RESULTADO' && resultadoRodada) {
       return (
         <div style={{ textAlign: 'center' }}>
-          <TopBar /><h1 style={{ color: resultadoRodada.acertou ? '#afffbf' : '#ffb3b3', textShadow: '0 0 10px currentColor' }}>{resultadoRodada.acertou ? 'SUCESSO NA DECIFRAÇÃO' : 'FALHA NA DECIFRAÇÃO'}</h1>
-          <div style={styles.paper}><div style={styles.folderTab}>RELATÓRIO //</div><p>A PALAVRA ERA: <strong style={{ color: '#b91c1c', fontSize: '24px' }}>{resultadoRodada.palavraSecreta}</strong></p><p>O DECIFRADOR DISSE: <strong>{resultadoRodada.tentativa}</strong></p><hr style={{ borderColor: '#aaa' }} /><ul style={{ textAlign: 'left', fontSize: '14px' }}>{resultadoRodada.resumo.map((l, i) => (<li key={i} style={{ marginBottom: '5px' }}>{l}</li>))}</ul></div>
-          {souHost ? (<button onClick={proximaRodada} style={styles.btnCRT}>PRÓXIMA RODADA ➡️</button>) : (<p style={{ color: '#afffbf' }}>AGUARDANDO O DIRETOR...</p>)}
+          <TopBar /><h1 style={{ color: resultadoRodada.acertou ? '#4ade80' : '#f87171', textShadow: '0 0 20px currentColor', fontSize: '32px', marginTop: '40px' }}>{resultadoRodada.acertou ? 'SUCESSO NA DECIFRAÇÃO' : 'FALHA NA DECIFRAÇÃO'}</h1>
+          <div style={styles.paper}><div style={styles.folderTab}>RELATÓRIO //</div><p style={{fontSize:'14px', color:'#666', marginBottom:'5px'}}>A PALAVRA ERA:</p><strong style={{ color: '#b91c1c', fontSize: '36px', display:'block', marginBottom:'20px' }}>{resultadoRodada.palavraSecreta}</strong><p>O DECIFRADOR DISSE: <strong>{resultadoRodada.tentativa}</strong></p><hr style={{ borderColor: '#ddd', margin: '20px 0' }} /><ul style={{ textAlign: 'left', fontSize: '16px', listStyle:'none', padding:0 }}>{resultadoRodada.resumo.map((l, i) => (<li key={i} style={{ marginBottom: '10px', paddingBottom:'10px', borderBottom:'1px dashed #ccc' }}>{l}</li>))}</ul></div>
+          {souHost ? (<button onClick={proximaRodada} style={{...styles.btnPrimary, width: 'auto', padding: '15px 40px'}}>PRÓXIMA RODADA ➡️</button>) : (<p style={{ color: '#aaa' }}>AGUARDANDO O DIRETOR...</p>)}
         </div>
       );
     }
@@ -647,9 +615,9 @@ function App() {
     if (fase === 'FIM') {
       return (
         <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: '40px', color: '#afffbf' }}>MISSÃO CUMPRIDA</h1>
-          <div style={{ border: '2px solid #afffbf', padding: '20px', maxWidth: '400px', margin: '0 auto' }}>{jogadores.map((j, i) => (<div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #afffbf', padding: '5px 0', color: '#afffbf' }}><span>#{i + 1} {j.nome}</span><span>{j.pontos} PTS</span></div>))}</div>
-          <button onClick={() => window.location.reload()} style={{ ...styles.btnCRT, marginTop: '30px' }}>NOVA MISSÃO</button>
+          <h1 style={{ fontSize: '60px', color: '#fff', marginBottom: '40px' }}>MISSÃO CUMPRIDA</h1>
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '30px', maxWidth: '500px', margin: '0 auto', borderRadius: '10px' }}>{jogadores.map((j, i) => (<div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.2)', padding: '15px 0', color: '#fff', fontSize: '20px' }}><span>#{i + 1} {j.nome}</span><span>{j.pontos} PTS</span></div>))}</div>
+          <button onClick={() => window.location.reload()} style={{ ...styles.btnPrimary, marginTop: '40px', width: 'auto' }}>NOVA MISSÃO</button>
         </div>
       );
     }
@@ -657,7 +625,7 @@ function App() {
     return <div style={{ color: 'red' }}>ERRO DE FASE: {fase}</div>;
   };
 
-  return <MonitorFrame>{renderContent()}<AvisoToast /></MonitorFrame>;
+  return <GlobalCRT>{renderContent()}<AvisoToast /></GlobalCRT>;
 }
 
 export default App;
