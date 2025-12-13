@@ -20,43 +20,39 @@ const styles = {
     minHeight: '100vh',
     width: '100%',
     fontFamily: "'Courier Prime', 'Courier New', monospace",
-    color: '#e0e0e0', // Texto quase branco (mais legível)
-    backgroundColor: '#0a0a0a', // Fundo quase preto
-    // Um gradiente sutil de fundo para não ser chapado
+    color: '#e0e0e0', // Texto claro padrão
+    backgroundColor: '#0a0a0a', 
     backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #000 90%)',
     overflowX: 'hidden',
-    overflowY: 'auto', // Scroll na página inteira
+    overflowY: 'auto', 
   },
 
-  // CONTAINER DE CONTEÚDO (Para não ficar tudo esticado nas bordas)
+  // CONTAINER DE CONTEÚDO CENTRALIZADO
   contentContainer: {
     maxWidth: '800px',
     width: '100%',
     margin: '0 auto',
     padding: '40px 20px',
     position: 'relative',
-    zIndex: 5, // Fica acima dos efeitos CRT
+    zIndex: 5, 
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    minHeight: '100vh', // Garante centralização vertical se pouco conteúdo
+    minHeight: '100vh', 
     justifyContent: 'center' 
   },
 
-  // --- EFEITOS CRT SUAVES (OVERLAYS) ---
-  
-  // Linhas de varredura (Scanlines) - Mais leves
+  // --- EFEITOS CRT SUAVES ---
   scanlines: {
     pointerEvents: 'none',
-    position: 'fixed', // Fixed para cobrir a tela mesmo com scroll
+    position: 'fixed',
     top: 0, left: 0, width: '100%', height: '100%',
     background: 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2))',
     backgroundSize: '100% 4px',
     zIndex: 10,
-    opacity: 0.6 // Bem sutil
+    opacity: 0.6 
   },
 
-  // Vinheta (Cantos escuros)
   vignette: {
     pointerEvents: 'none',
     position: 'fixed',
@@ -65,30 +61,24 @@ const styles = {
     zIndex: 11,
   },
 
-  // Brilho/Glow no texto (Dá a sensação de luz emitida)
-  textGlow: {
-    textShadow: '0 0 4px rgba(255, 255, 255, 0.4)'
-  },
-
   // --- ELEMENTOS DE UI ---
 
-  // Logo (Sem filtro verde, apenas brilho)
+  // Logo com brilho
   logoHero: {
     width: '100%', 
     maxWidth: '450px', 
     marginBottom: '30px',
-    // Filtro para dar brilho na imagem original
     filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3)) contrast(1.1) brightness(1.1)',
     animation: 'float 6s ease-in-out infinite'
   },
 
-  // Inputs Modernos/Retrô
+  // Inputs Estilo Terminal
   inputCRT: {
     padding: '15px',
     margin: '10px 0',
     fontSize: '18px',
     color: '#fff',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)', // Fundo translúcido
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
     border: '1px solid rgba(255, 255, 255, 0.2)',
     width: '100%',
     fontFamily: "'Courier Prime', monospace",
@@ -101,7 +91,6 @@ const styles = {
     transition: 'all 0.3s ease'
   },
 
-  // Inputs menores para configuração
   inputCRT_Small: {
     padding: '8px',
     margin: '0',
@@ -118,11 +107,10 @@ const styles = {
     borderRadius: '4px'
   },
 
-  // Botões Coloridos
+  // Botões
   btnPrimary: {
     padding: '18px 30px',
     width: '100%',
-    // Gradiente sutil
     background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)', 
     color: '#fff',
     border: '1px solid #60a5fa',
@@ -155,10 +143,10 @@ const styles = {
     transition: 'all 0.2s'
   },
 
-  // Cards dos Jogadores
+  // Cards dos Jogadores (Terminal Style)
   agentCard: {
     backgroundColor: 'rgba(20, 20, 20, 0.8)',
-    backdropFilter: 'blur(5px)', // Efeito vidro fosco
+    backdropFilter: 'blur(5px)', 
     color: '#fff',
     padding: '15px',
     width: '120px',
@@ -179,23 +167,51 @@ const styles = {
     border:'2px solid #555'
   },
 
-  // Pasta de Papel (Mantida para o jogo, mas mais limpa)
+  // --- ÁREA DE PAPEL (JOGO) ---
+  
   paper: {
-    backgroundColor: '#f5f5f5',
-    color: '#111', // Texto preto no papel
-    padding: '40px',
+    backgroundColor: '#f0e6d2',
+    backgroundImage: 'linear-gradient(to bottom, #fdfbf7 0%, #f0e6d2 100%)',
+    padding: '40px 30px',
     boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
     width: '100%',
     margin: '20px auto',
     position: 'relative',
-    transform: 'rotate(-1deg)', // Leve inclinação
-    borderRadius: '2px'
+    transform: 'rotate(-1deg)',
+    borderRadius: '2px',
+    color: '#1a1a1a', // TEXTO ESCURO NO PAPEL
+  },
+
+  // Área de Texto Grande (Caderno Pautado)
+  paperTextArea: {
+    width: '100%',
+    height: '350px', 
+    backgroundColor: 'transparent',
+    border: 'none',
+    resize: 'none',
+    outline: 'none',
+    fontFamily: "'Courier Prime', monospace",
+    fontSize: '22px',
+    fontWeight: 'bold',
+    color: '#1a1a1a', // PRETO
+    lineHeight: '32px', 
+    backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #ccc 31px, #ccc 32px)',
+    backgroundAttachment: 'local',
+    marginTop: '10px'
+  },
+
+  // Input linha única (Sabotagem/Chute)
+  inputPaper: {
+    padding: '10px', margin: '8px 0', fontSize: '18px',
+    color: '#1a1a1a', backgroundColor: 'rgba(255,255,255,0.5)',
+    border: 'none', borderBottom: '2px dashed #666',
+    width: '100%', fontFamily: "inherit", fontWeight: 'bold', outline: 'none'
   },
 
   folderTab: {
     position: 'absolute', top: '-25px', left: '0',
     width: '140px', height: '30px',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0e6d2',
     borderRadius: '5px 5px 0 0',
     display: 'flex', alignItems: 'center', paddingLeft: '15px',
     fontSize: '10px', fontWeight: 'bold', color: '#666', letterSpacing: '1px',
@@ -213,30 +229,16 @@ const styles = {
   }
 };
 
-// COMPONENTE: ESTRUTURA GLOBAL (TELA INTEIRA)
+// --- ESTRUTURA GLOBAL ---
 const GlobalCRT = ({ children }) => (
   <div style={styles.mainWrapper}>
-    {/* Efeitos Globais */}
     <div style={styles.scanlines} />
     <div style={styles.vignette} />
-    
-    {/* Container Centralizado */}
-    <div style={styles.contentContainer}>
-        {children}
-    </div>
-
-    {/* Animação Float para Logo */}
+    <div style={styles.contentContainer}>{children}</div>
     <style>{`
-      @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-        100% { transform: translateY(0px); }
-      }
-      /* Hover effects */
+      @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
       button:hover { opacity: 0.9; transform: translateY(-1px); }
       button:active { transform: translateY(1px); }
-      
-      /* Scrollbar bonita */
       ::-webkit-scrollbar { width: 8px; }
       ::-webkit-scrollbar-track { background: #111; }
       ::-webkit-scrollbar-thumb { background: #444; borderRadius: 4px; }
@@ -272,6 +274,7 @@ function App() {
     }
   }, []);
 
+  // --- ESTADOS ---
   const [entrou, setEntrou] = useState(false);
   const [nome, setNome] = useState('');
   const [sala, setSala] = useState('');
@@ -457,7 +460,7 @@ function App() {
     </div>
   );
 
-  const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ff6666' : '#86efac'; return (<div style={{ position: 'absolute', top: '60px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '10px', zIndex: 100 }}>{aviso.msg}</div>); };
+  const AvisoToast = () => { if (!aviso) return null; const color = aviso.tipo === 'perigo' ? '#ff6666' : '#86efac'; return (<div style={{ position: 'fixed', top: '60px', left: '0', width: '100%', textAlign: 'center', color: color, fontWeight: 'bold', background: 'rgba(0,0,0,0.8)', padding: '10px', zIndex: 100 }}>{aviso.msg}</div>); };
 
   const renderContent = () => {
     // 1. TELA DE LOGIN
@@ -550,7 +553,7 @@ function App() {
       );
     }
 
-    // --- MANTENDO A PASTA PARA O JOGO ---
+    // --- FASE DE PREPARAÇÃO CORRIGIDA ---
     if (fase === 'PREPARACAO') {
       const devoEsconder = (souHost && configRecebida?.streamerMode) || modoStreamerLocal;
       return (
@@ -568,13 +571,38 @@ function App() {
                     <div style={{fontSize:'12px', color:'#888'}}>SUA PALAVRA SECRETA</div>
                     <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', textShadow: '0 0 10px #fff' }}>{minhaPalavraInicial}</div>
                   </div>
-                  <div style={styles.paper}><div style={styles.folderTab}>RELATÓRIO //</div><textarea rows={6} autoFocus placeholder="Descreva a palavra..." value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ ...styles.inputPaper, background: 'transparent', border: 'none', resize: 'none', fontFamily: '"Courier Prime", monospace' }} /></div>
+                  
+                  {/* PAPEL COM ÁREA DE TEXTO GRANDE E PRETA */}
+                  <div style={styles.paper}>
+                    <div style={styles.folderTab}>RELATÓRIO //</div>
+                    <textarea 
+                      rows={10} 
+                      autoFocus 
+                      maxLength={200}
+                      placeholder="Datilografe a descrição aqui..." 
+                      value={textoPreparacao} 
+                      onChange={(e) => setTextoPreparacao(e.target.value)} 
+                      style={styles.paperTextArea} 
+                    />
+                    {/* Contador de Caracteres */}
+                    <div style={{ textAlign: 'right', fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                        {textoPreparacao.length}/200
+                    </div>
+                  </div>
+
                   <button onClick={enviarTextoPreparacao} style={styles.btnPrimary}>ENVIAR RELATÓRIO</button>
                 </>
               )}
-              {janelaExternaAberta && <JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '20px', color: '#fff', fontFamily: 'monospace', textAlign: 'center' }}><h2>PALAVRA: {minhaPalavraInicial}</h2><textarea value={textoPreparacao} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ width: '100%', height: '200px', background: '#333', color: '#fff', border: '1px solid #555', padding:'10px' }} /><button onClick={enviarTextoPreparacao} style={{ marginTop: '10px', padding: '10px', width: '100%', cursor: 'pointer', background: '#2563eb', color: 'white', border:'none' }}>ENVIAR</button></div></JanelaExterna>}
+              
+              {janelaExternaAberta && <JanelaExterna onClose={() => setJanelaExternaAberta(false)}><div style={{ padding: '20px', color: '#fff', fontFamily: 'monospace', textAlign: 'center' }}><h2>PALAVRA: {minhaPalavraInicial}</h2><textarea value={textoPreparacao} maxLength={200} onChange={(e) => setTextoPreparacao(e.target.value)} style={{ width: '100%', height: '300px', background: '#eee', color: '#000', border: '1px solid #555', padding:'10px', fontSize: '18px', fontFamily: 'monospace' }} /><button onClick={enviarTextoPreparacao} style={{ marginTop: '10px', padding: '15px', width: '100%', cursor: 'pointer', background: '#2563eb', color: 'white', border:'none', fontSize: '16px', fontWeight: 'bold' }}>ENVIAR</button></div></JanelaExterna>}
             </>
-          ) : (<div style={{ textAlign: 'center', marginTop: '150px', color: '#aaa' }}><h2>RELATÓRIO ENVIADO</h2><p>Aguardando outros agentes ({statusPreparacao.prontos}/{statusPreparacao.total})...</p></div>)}
+          ) : (
+            <div style={{ textAlign: 'center', marginTop: '150px', color: '#aaa' }}>
+              <div style={{ fontSize: '60px', marginBottom: '20px' }}>📁</div>
+              <h2>RELATÓRIO ARQUIVADO</h2>
+              <p style={{ marginTop: '10px' }}>Aguardando outros agentes ({statusPreparacao.prontos}/{statusPreparacao.total})...</p>
+            </div>
+          )}
         </div>
       );
     }
