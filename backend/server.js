@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 
-// IMPORTAÇÃO SEGURA
+// 🔥 IMPORTAÇÃO SEGURA (Certifique-se que o arquivo palavras.js existe na mesma pasta)
 const { PALAVRAS } = require('./palavras');
 
 const app = express();
@@ -40,7 +40,7 @@ function gerarTokenSeguro() {
   return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 }
 
-// Regex que ignora acentos e cedilha
+// 🔥 REGEX PODEROSA: Ignora acentos, case e plural simples
 function gerarRegexFlexivel(texto) {
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const base = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -54,7 +54,7 @@ function gerarRegexFlexivel(texto) {
     for (let char of base) {
         pattern += mapa[char] || escapeRegex(char);
     }
-    pattern += "(es|s)?"; // Plural opcional
+    pattern += "(es|s)?"; // Plural opcional (Gato pega Gatos)
 
     return new RegExp(pattern, 'gi');
 }
@@ -65,6 +65,7 @@ function iniciarTimer(nomeSala, duracaoSegundos, callbackTimeout) {
 
   if (sala.timer) clearTimeout(sala.timer);
   
+  // Timestamp absoluto para o frontend sincronizar
   sala.timestampFim = Date.now() + (duracaoSegundos * 1000);
 
   io.to(nomeSala).emit('sincronizar_tempo', { 
@@ -82,14 +83,23 @@ function iniciarTimer(nomeSala, duracaoSegundos, callbackTimeout) {
 io.on('connection', (socket) => {
   console.log(`👤 Conectado: ${socket.id}`);
 
+  // 🔥 1. VERIFICAÇÃO INTELIGENTE DA SALA
   socket.on('verificar_sala', (roomId) => {
     const id = roomId ? roomId.toUpperCase() : '';
-    if (!salas[id]) {
-      socket.emit('sessao_invalida');
+    const sala = salas[id];
+    
+    if (sala) {
+        // Retorna infos para o Front decidir se mostra campo de senha ou botão Twitch
+        socket.emit('info_sala_retorno', { 
+            existe: true, 
+            twitchAuth: sala.config.twitchAuth 
+        });
+    } else {
+        socket.emit('sessao_invalida');
     }
   });
 
-  // 🔥 ATUALIZADO: Recebe twitchData e salva a foto
+  // 🔥 2. CRIAÇÃO DE SALA (COM AVATAR)
   socket.on('criar_sala', ({ nomeJogador, senha, config, twitchData }) => {
     const novoId = gerarIdSala();
     const tokenSeguro = gerarTokenSeguro(); 
@@ -123,6 +133,7 @@ io.on('connection', (socket) => {
 
     socket.join(novoId);
 
+    // Salva o Host com sua foto (se tiver)
     salas[novoId].jogadores.push({ 
       id: socket.id, 
       nome: nomeJogador, 
@@ -132,7 +143,7 @@ io.on('connection', (socket) => {
       minhaPalavra: null,
       meuTexto: null,
       pronto: false,
-      foto: twitchData ? twitchData.foto : null // <--- SALVA A FOTO AQUI
+      foto: twitchData ? twitchData.foto : null 
     });
 
     socket.emit('sala_criada_sucesso', { 
@@ -145,17 +156,20 @@ io.on('connection', (socket) => {
     console.log(`🏠 Sala criada: ${novoId} por ${nomeJogador}`);
   });
 
-  socket.on('entrar_sala', ({ roomId, senha, nomeJogador, token }) => {
+  // 🔥 3. ENTRADA NA SALA (CONVIDADO OU HOST)
+  socket.on('entrar_sala', ({ roomId, senha, nomeJogador, token, twitchData }) => {
     const idMaiusculo = roomId.toUpperCase(); 
 
     if (!salas[idMaiusculo]) {
       socket.emit('erro_login', 'Sala não encontrada!');
-      socket.emit('sessao_invalida'); 
       return;
     }
 
     const sala = salas[idMaiusculo];
 
+    // LÓGICA DE SENHA:
+    // Se a sala NÃO for Twitch Auth, exige senha.
+    // Se for Twitch Auth, permite entrar sem senha (via link/convite).
     if (!sala.config.twitchAuth) {
         if (sala.senha !== senha) {
             socket.emit('erro_login', 'Senha incorreta!');
@@ -163,8 +177,8 @@ io.on('connection', (socket) => {
         }
     }
 
+    // LÓGICA DE HOST RECONECTANDO
     let isReturningHost = false;
-
     if (nomeJogador === sala.hostName) {
         if (token === sala.hostToken) {
             if (sala.destructionTimer) {
@@ -179,6 +193,7 @@ io.on('connection', (socket) => {
             return;
         }
     } else {
+        // Validação de nome único
         const nomeExiste = sala.jogadores.some(p => p.nome === nomeJogador);
         if (nomeExiste) {
             socket.emit('erro_login', 'Esse nome já está em uso na sala!');
@@ -188,6 +203,9 @@ io.on('connection', (socket) => {
 
     socket.join(idMaiusculo);
     
+    // Define a foto do jogador (se veio da twitchData ou null)
+    const fotoJogador = twitchData ? twitchData.foto : null;
+
     const novoJogador = { 
       id: socket.id, 
       nome: nomeJogador, 
@@ -197,7 +215,7 @@ io.on('connection', (socket) => {
       minhaPalavra: null,
       meuTexto: null,
       pronto: false,
-      foto: null // Padrão sem foto para convidados (por enquanto)
+      foto: fotoJogador
     };
 
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
@@ -217,6 +235,7 @@ io.on('connection', (socket) => {
     io.to(idMaiusculo).emit('atualizar_sala', sala.jogadores);
     io.to(idMaiusculo).emit('log_evento', { msg: `🟢 ${nomeJogador} conectou-se.`, tipo: 'info' });
 
+    // SINCRONIZA QUEM ENTROU NO MEIO DO JOGO
     if (sala.fase !== 'LOBBY' && sala.fase !== 'FIM') {
         const totalR = sala.jogadores.length * sala.config.numCiclos;
         
