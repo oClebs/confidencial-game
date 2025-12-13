@@ -8,7 +8,7 @@ const TWITCH_CLIENT_ID = 'hoevm6fscw93d5c01d7ermgu6nbhk7';
 
 const socket = io(window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/');
 
-// --- ESTILOS (DEFINIDOS FORA PARA EVITAR ERROS) ---
+// --- ESTILOS ---
 const styles = {
   mainWrapper: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width: '100%', fontFamily: "'Courier New', Courier, monospace", color: '#e5e5e5', boxSizing: 'border-box', padding: '20px' },
   input: { padding: '15px', margin: '10px 0', fontSize: '18px', color: '#1a1a1a', backgroundColor: '#f8f8f8', border: '2px solid #333', width: '100%', fontFamily: "'Courier New', Courier, monospace", fontWeight: 'bold', boxSizing: 'border-box' },
@@ -43,7 +43,7 @@ const JanelaExterna = ({ children, onClose }) => {
 };
 
 function App() {
-  // Lógica do Pop-up (Executa ao abrir a janela)
+  // --- LÓGICA DO POP-UP ---
   useEffect(() => {
       const hash = window.location.hash;
       if (hash && hash.includes('access_token') && window.opener) {
@@ -108,6 +108,7 @@ function App() {
       setTimeout(() => { setLogsSistema(prev => prev.filter(log => log.id !== id)); }, 4000);
   };
 
+  // 🔥 DETECÇÃO AUTOMÁTICA DE SALA
   useEffect(() => {
       if (sala.length === 4) socket.emit('verificar_sala', sala);
       else setSalaEhTwitch(false);
@@ -272,7 +273,34 @@ function App() {
               <button onClick={() => {setModoLogin('MENU'); setErroLogin('');}} style={{ ...styles.btn, background: 'transparent', color: '#333', border: '2px solid #333' }}>CANCELAR</button>
             </div>
           )}
-          {modoLogin === 'ENTRAR' && (<div style={{ marginTop: '20px' }}><h3 style={{textAlign: 'center'}}>// LOGIN DE AGENTE //</h3><input placeholder="CODINOME" onChange={e => setNome(e.target.value)} style={styles.input} /><input placeholder="CÓDIGO DA OPERAÇÃO (ID)" value={sala} onChange={e => setSala(e.target.value)} style={{...styles.input, textTransform: 'uppercase'}} />{salaEhTwitch ? (<div style={{ margin: '15px 0' }}><p style={{ color: '#9146FF', fontWeight: 'bold', textAlign: 'center', marginBottom: '10px' }}>👾 SALA REQUER AUTENTICAÇÃO TWITCH</p><button onClick={acaoEntrarSala} style={{ ...styles.btn, background: '#9146FF' }}>LOGAR COM TWITCH & ENTRAR</button></div>) : (<><input placeholder="SENHA DE ACESSO (Opcional se for Twitch)" type="text" onChange={e => setSenha(e.target.value)} style={styles.input} /><button onClick={acaoEntrarSala} style={{ ...styles.btn, background: '#15803d' }}>ACESSAR</button></>)}{erroLogin && <p style={{color: '#b91c1c', fontWeight: 'bold', textAlign: 'center'}}>{erroLogin}</p>}<button onClick={() => {setModoLogin('MENU'); setErroLogin('');}} style={{ ...styles.btn, background: 'transparent', color: '#333', border: '2px solid #333' }}>CANCELAR</button></div>)}
+          {modoLogin === 'ENTRAR' && (
+            <div style={{ marginTop: '20px' }}>
+                <h3 style={{textAlign: 'center'}}>// LOGIN DE AGENTE //</h3>
+                {/* 1. O CÓDIGO DA SALA VEM PRIMEIRO (Para decidir se é Twitch ou não) */}
+                <input placeholder="CÓDIGO DA OPERAÇÃO (ID)" value={sala} onChange={e => setSala(e.target.value.toUpperCase())} style={{...styles.input, textTransform: 'uppercase'}} />
+                
+                {salaEhTwitch ? (
+                    /* FLUXO TWITCH: Mostra aviso e botão */
+                    <div style={{ margin: '15px 0' }}>
+                        <input value="(Identificação via Twitch)" disabled style={{...styles.input, opacity: 0.5, cursor: 'not-allowed', textAlign: 'center'}} />
+                        <p style={{ color: '#9146FF', fontWeight: 'bold', textAlign: 'center', marginBottom: '10px' }}>👾 SALA REQUER AUTENTICAÇÃO TWITCH</p>
+                        <button onClick={acaoEntrarSala} style={{ ...styles.btn, background: '#9146FF' }}>
+                            LOGAR COM TWITCH & ENTRAR
+                        </button>
+                    </div>
+                ) : (
+                    /* FLUXO NORMAL: Mostra nome e senha */
+                    <>
+                        <input placeholder="CODINOME" onChange={e => setNome(e.target.value)} style={styles.input} />
+                        <input placeholder="SENHA DE ACESSO" type="text" onChange={e => setSenha(e.target.value)} style={styles.input} />
+                        <button onClick={acaoEntrarSala} style={{ ...styles.btn, background: '#15803d' }}>ACESSAR</button>
+                    </>
+                )}
+                
+                {erroLogin && <p style={{color: '#b91c1c', fontWeight: 'bold', textAlign: 'center'}}>{erroLogin}</p>}
+                <button onClick={() => {setModoLogin('MENU'); setErroLogin('');}} style={{ ...styles.btn, background: 'transparent', color: '#333', border: '2px solid #333' }}>CANCELAR</button>
+            </div>
+          )}
         </div>
       </div>
     );
